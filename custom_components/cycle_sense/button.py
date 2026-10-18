@@ -57,7 +57,7 @@ class TestAnnouncementButton(CycleSenseEntity[Announcer], ButtonEntity):
         """Handle the press."""
         ann = self.coordinator
         text = render(
-            ann.text_finished,
+            ann.finished_text(next(iter(ann.texts_finished), None)),
             ann.values({"name": "Waschmaschine", "program": "Baumwolle 40°", "duration_min": 85, "energy_kwh": 0.54}),
         )
         if not await ann.async_announce(text, force=True):

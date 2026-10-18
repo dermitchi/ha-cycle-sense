@@ -78,6 +78,9 @@
       },
       "text_started": {
         "default": "mdi:message-text-outline"
+      },
+      "text_finished_device": {
+        "default": "mdi:message-text"
       }
     },
     "number": {

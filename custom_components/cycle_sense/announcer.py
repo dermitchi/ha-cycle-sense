@@ -84,6 +84,7 @@ class Announcer(DataUpdateCoordinator[None]):
         super().__init__(hass, _LOGGER, config_entry=entry, name=entry.title)
         self.enabled = True
         self.text_finished = DEFAULT_TEXT_FINISHED
+        self.texts_finished: dict[str, str] = {}
         self.text_started = ""
         self.volume = DEFAULT_VOLUME
         self.last_text: str | None = None
@@ -104,6 +105,7 @@ class Announcer(DataUpdateCoordinator[None]):
         if data := await self._store.async_load():
             self.enabled = data.get("enabled", True)
             self.text_finished = data.get("text_finished", DEFAULT_TEXT_FINISHED)
+            self.texts_finished = data.get("texts_finished", {})
             self.text_started = data.get("text_started", "")
             self.volume = data.get("volume", DEFAULT_VOLUME)
         entry = self.config_entry
@@ -124,6 +126,7 @@ class Announcer(DataUpdateCoordinator[None]):
         return {
             "enabled": self.enabled,
             "text_finished": self.text_finished,
+            "texts_finished": self.texts_finished,
             "text_started": self.text_started,
             "volume": self.volume,
         }
@@ -134,7 +137,7 @@ class Announcer(DataUpdateCoordinator[None]):
     def _on_finished(self, event: Event) -> None:
         if event.data.get("reason") != "quiet":
             return
-        self._schedule(self.text_finished, event.data)
+        self._schedule(self.finished_text(event.data.get("entry_id")), event.data)
 
     @callback
     def _on_started(self, event: Event) -> None:
@@ -149,6 +152,17 @@ class Announcer(DataUpdateCoordinator[None]):
         self.config_entry.async_create_background_task(
             self.hass, self.async_announce(text), f"{DOMAIN}_announce"
         )
+
+    def finished_text(self, appliance_entry_id: str | None) -> str:
+        """Per-appliance finished text, falling back to the general one."""
+        return self.texts_finished.get(appliance_entry_id or "") or self.text_finished
+
+    @callback
+    def async_set_finished_text(self, appliance_entry_id: str, text: str) -> None:
+        """Set the finished text of one appliance."""
+        self.texts_finished = {**self.texts_finished, appliance_entry_id: text}
+        self._store.async_delay_save(self._data, 1)
+        self.async_update_listeners()
 
     def values(self, data: dict[str, Any]) -> dict[str, str]:
         """Placeholder values for one event."""

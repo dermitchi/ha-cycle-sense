@@ -260,6 +260,14 @@
             "name": "Variables"
           }
         }
+      },
+      "text_finished_device": {
+        "name": "Text {device} finished",
+        "state_attributes": {
+          "variables": {
+            "name": "Variables"
+          }
+        }
       }
     },
     "number": {

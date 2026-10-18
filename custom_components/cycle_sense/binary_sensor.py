@@ -9,6 +9,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import CycleSenseConfigEntry
 from .engine import Phase
 from .entity import CycleSenseEntity
+from .manager import CycleManager
 
 
 async def async_setup_entry(
@@ -20,7 +21,7 @@ async def async_setup_entry(
     async_add_entities([RunningBinarySensor(entry.runtime_data, "running")])
 
 
-class RunningBinarySensor(CycleSenseEntity, BinarySensorEntity):
+class RunningBinarySensor(CycleSenseEntity[CycleManager], BinarySensorEntity):
     """On while a cycle runs."""
 
     _attr_device_class = BinarySensorDeviceClass.RUNNING

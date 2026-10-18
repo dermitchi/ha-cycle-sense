@@ -11,7 +11,8 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .announcer import Announcer
+from .const import CONF_ENTRY_TYPE, DOMAIN, ENTRY_ANNOUNCER
 from .manager import CycleManager
 
 PLATFORMS: list[Platform] = [
@@ -21,9 +22,16 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.TEXT,
 ]
+ANNOUNCER_PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
+    Platform.NUMBER,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.TEXT,
+]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-type CycleSenseConfigEntry = ConfigEntry[CycleManager]
+type CycleSenseConfigEntry = ConfigEntry[CycleManager | Announcer]
 
 ATTR_ENTRY = "config_entry_id"
 _ENTRY = vol.Required(ATTR_ENTRY)
@@ -43,7 +51,12 @@ SCHEMAS = {
 
 def _manager(hass: HomeAssistant, call: ServiceCall) -> CycleManager:
     entry = hass.config_entries.async_get_entry(call.data[ATTR_ENTRY])
-    if entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED:
+    if (
+        entry is None
+        or entry.domain != DOMAIN
+        or entry.state is not ConfigEntryState.LOADED
+        or not isinstance(entry.runtime_data, CycleManager)
+    ):
         raise ServiceValidationError(translation_domain=DOMAIN, translation_key="bad_entry")
     return entry.runtime_data
 
@@ -86,19 +99,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+def _platforms(entry: ConfigEntry) -> list[Platform]:
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_ANNOUNCER:
+        return ANNOUNCER_PLATFORMS
+    return PLATFORMS
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: CycleSenseConfigEntry) -> bool:
-    """Set up an appliance from a config entry."""
-    manager = CycleManager(hass, entry)
-    await manager.async_start()
-    entry.runtime_data = manager
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    """Set up an appliance or the announcer from a config entry."""
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_ANNOUNCER:
+        runtime: CycleManager | Announcer = Announcer(hass, entry)
+    else:
+        runtime = CycleManager(hass, entry)
+    await runtime.async_start()
+    entry.runtime_data = runtime
+    await hass.config_entries.async_forward_entry_setups(entry, _platforms(entry))
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: CycleSenseConfigEntry) -> bool:
-    """Unload a config entry and persist the running state."""
-    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    """Unload a config entry and persist its state."""
+    unloaded = await hass.config_entries.async_unload_platforms(entry, _platforms(entry))
     if unloaded:
         await entry.runtime_data.async_stop()
     return unloaded

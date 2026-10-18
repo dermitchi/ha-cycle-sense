@@ -9,6 +9,20 @@ DOMAIN: Final = "cycle_sense"
 CONF_POWER_SENSOR: Final = "power_sensor"
 CONF_DOOR_SENSOR: Final = "door_sensor"
 CONF_APPLIANCE_TYPE: Final = "appliance_type"
+CONF_ENTRY_TYPE: Final = "entry_type"
+ENTRY_APPLIANCE: Final = "appliance"
+ENTRY_ANNOUNCER: Final = "announcer"
+
+# Announcer
+CONF_MEDIA_PLAYERS: Final = "media_players"
+CONF_TTS: Final = "tts_entity"
+CONF_QUIET_START: Final = "quiet_start"
+CONF_QUIET_END: Final = "quiet_end"
+CONF_PERSONS: Final = "persons"
+DEFAULT_TEXT_FINISHED: Final = "{geraet} ist fertig."
+DEFAULT_VOLUME: Final = 40
+DEFAULT_QUIET_START: Final = "22:00:00"
+DEFAULT_QUIET_END: Final = "07:00:00"
 
 TYPE_WASHER: Final = "washer"
 TYPE_DRYER: Final = "dryer"

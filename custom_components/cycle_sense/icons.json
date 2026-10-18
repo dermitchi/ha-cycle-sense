@@ -14,6 +14,9 @@
       },
       "learn_last": {
         "default": "mdi:content-save-plus"
+      },
+      "test_announcement": {
+        "default": "mdi:speaker-message"
       }
     },
     "sensor": {
@@ -47,6 +50,9 @@
       },
       "progress": {
         "default": "mdi:progress-clock"
+      },
+      "last_announcement": {
+        "default": "mdi:account-voice"
       }
     },
     "switch": {
@@ -55,11 +61,28 @@
         "state": {
           "off": "mdi:record"
         }
+      },
+      "announcements": {
+        "default": "mdi:bullhorn",
+        "state": {
+          "off": "mdi:bullhorn-outline"
+        }
       }
     },
     "text": {
       "learn_name": {
         "default": "mdi:form-textbox"
+      },
+      "text_finished": {
+        "default": "mdi:message-text"
+      },
+      "text_started": {
+        "default": "mdi:message-text-outline"
+      }
+    },
+    "number": {
+      "volume": {
+        "default": "mdi:volume-high"
       }
     }
   },

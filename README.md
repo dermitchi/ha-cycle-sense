@@ -28,7 +28,7 @@ Cycle Sense can learn the programs of your appliance and then recognise them whi
 2. Turn on *Learn mode* – before or while the program runs (the whole cycle is recorded from its start either way).
 3. When the cycle finishes it is saved under that name and learn mode switches off. Scan the same program again to make it more precise.
 
-Forgot to switch it on? Enter the name and press *Learn last cycle*.
+Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs can be renamed or deleted under *Configure → Manage programs*.
 
 **Automatic learning** – cycles that match a known program improve it; similar unknown cycles are grouped into *Program 1, 2, …* automatically (just rename them). Call `cycle_sense.import_history` to learn from the cycles already in your recorder.
 
@@ -76,6 +76,12 @@ actions:
         {{ trigger.event.data.program or 'Washer' }} finished after
         {{ trigger.event.data.duration_min | round }} min
 ```
+
+## Spoken announcements
+
+Add **Cycle Sense → Spoken announcements** once to get an extra device that speaks on your smart speakers (e.g. HomePods via the Apple TV integration) when an appliance finishes. Choose speakers, TTS voice, quiet hours and (optionally) people who must be home. On the device you get: *Announcements* on/off, *Text when finished*, *Text when started* (empty = off), *Volume* (restored afterwards), *Test announcement* and *Last announcement*.
+
+Texts support placeholders: `{geraet}` (appliance), `{programm}` (recognised program), `{dauer}` (minutes), `{energie}` (kWh), `{uhrzeit}` (time). Example: `{geraet} ist fertig – {programm}, {dauer} Minuten.`
 
 ## Kurzanleitung (Deutsch)
 

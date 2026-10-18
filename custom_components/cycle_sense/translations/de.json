@@ -2,6 +2,13 @@
   "config": {
     "step": {
       "user": {
+        "title": "Cycle Sense",
+        "menu_options": {
+          "appliance": "Gerät (Waschmaschine, Trockner, …)",
+          "announcer": "Durchsagen"
+        }
+      },
+      "appliance": {
         "title": "Gerät hinzufügen",
         "description": "Wähle den Leistungssensor der Steckdose, an der das Gerät hängt.",
         "data": {
@@ -13,15 +20,34 @@
         "data_description": {
           "door_sensor": "Öffnen der Tür setzt „Fertig“ zurück."
         }
+      },
+      "announcer": {
+        "title": "Durchsagen",
+        "description": "Spricht auf den gewählten Lautsprechern, wenn ein Gerät fertig ist. Text, Lautstärke und An/Aus sind Entitäten des neuen Geräts.",
+        "data": {
+          "name": "Name",
+          "media_players": "Lautsprecher",
+          "tts_entity": "Stimme (TTS)",
+          "quiet_start": "Ruhe ab",
+          "quiet_end": "Ruhe bis",
+          "persons": "Nur wenn eine dieser Personen zuhause ist"
+        }
       }
     },
     "abort": {
-      "already_configured": "Dieser Leistungssensor wird bereits verwendet."
+      "already_configured": "Ist bereits eingerichtet."
     }
   },
   "options": {
     "step": {
       "init": {
+        "title": "Cycle Sense",
+        "menu_options": {
+          "settings": "Erkennung einstellen",
+          "programs": "Programme verwalten"
+        }
+      },
+      "settings": {
         "title": "Erkennung einstellen",
         "data": {
           "start_power": "Startschwelle",
@@ -36,7 +62,35 @@
           "end_power": "Darunter gilt das Gerät als ruhig (über Standby wählen).",
           "spike_max_s": "Kürzere Aktivität (Knitterschutz, Nachlauf) zählt nicht als Laufen."
         }
+      },
+      "programs": {
+        "title": "Programme verwalten",
+        "description": "{programs}",
+        "data": {
+          "program": "Programm",
+          "action": "Aktion",
+          "new_name": "Neuer Name"
+        },
+        "data_description": {
+          "new_name": "Ein vorhandener Name führt beide Programme zusammen."
+        }
+      },
+      "announcer": {
+        "title": "Durchsagen",
+        "data": {
+          "media_players": "Lautsprecher",
+          "tts_entity": "Stimme (TTS)",
+          "quiet_start": "Ruhe ab",
+          "quiet_end": "Ruhe bis",
+          "persons": "Nur wenn eine dieser Personen zuhause ist"
+        }
       }
+    },
+    "abort": {
+      "no_programs": "Noch keine Programme gelernt."
+    },
+    "error": {
+      "name_required": "Bitte einen neuen Namen eingeben."
     }
   },
   "selector": {
@@ -46,6 +100,12 @@
         "dryer": "Trockner",
         "dishwasher": "Spülmaschine",
         "other": "Sonstiges"
+      }
+    },
+    "program_action": {
+      "options": {
+        "rename": "Umbenennen",
+        "delete": "Löschen"
       }
     }
   },
@@ -61,6 +121,9 @@
       },
       "learn_last": {
         "name": "Letzten Lauf einlernen"
+      },
+      "test_announcement": {
+        "name": "Test-Durchsage"
       }
     },
     "sensor": {
@@ -128,6 +191,17 @@
       },
       "progress": {
         "name": "Fortschritt"
+      },
+      "last_announcement": {
+        "name": "Letzte Durchsage",
+        "state_attributes": {
+          "text": {
+            "name": "Text"
+          },
+          "last_skipped": {
+            "name": "Zuletzt übersprungen"
+          }
+        }
       }
     },
     "switch": {
@@ -138,11 +212,35 @@
             "name": "Programmname"
           }
         }
+      },
+      "announcements": {
+        "name": "Durchsagen"
       }
     },
     "text": {
       "learn_name": {
         "name": "Programmname (Einlernen)"
+      },
+      "text_finished": {
+        "name": "Text bei Fertig",
+        "state_attributes": {
+          "variables": {
+            "name": "Variablen"
+          }
+        }
+      },
+      "text_started": {
+        "name": "Text bei Start (leer = aus)",
+        "state_attributes": {
+          "variables": {
+            "name": "Variablen"
+          }
+        }
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Lautstärke"
       }
     }
   },
@@ -158,6 +256,9 @@
     },
     "bad_entry": {
       "message": "Kein geladenes Cycle-Sense-Gerät."
+    },
+    "announce_failed": {
+      "message": "Durchsage fehlgeschlagen – Lautsprecher und Stimme prüfen."
     }
   },
   "services": {

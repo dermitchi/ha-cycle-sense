@@ -2,6 +2,13 @@
   "config": {
     "step": {
       "user": {
+        "title": "Cycle Sense",
+        "menu_options": {
+          "appliance": "Appliance (washer, dryer, …)",
+          "announcer": "Spoken announcements"
+        }
+      },
+      "appliance": {
         "title": "Add appliance",
         "description": "Pick the power sensor of the plug the appliance is connected to.",
         "data": {
@@ -13,15 +20,34 @@
         "data_description": {
           "door_sensor": "Opening the door clears the finished state."
         }
+      },
+      "announcer": {
+        "title": "Announcements",
+        "description": "Speaks on the chosen speakers when an appliance finishes. Text, volume and on/off are entities of the new device.",
+        "data": {
+          "name": "Name",
+          "media_players": "Speakers",
+          "tts_entity": "Voice (TTS)",
+          "quiet_start": "Quiet from",
+          "quiet_end": "Quiet until",
+          "persons": "Only when one of these is home"
+        }
       }
     },
     "abort": {
-      "already_configured": "This power sensor is already in use."
+      "already_configured": "Already configured."
     }
   },
   "options": {
     "step": {
       "init": {
+        "title": "Cycle Sense",
+        "menu_options": {
+          "settings": "Detection settings",
+          "programs": "Manage programs"
+        }
+      },
+      "settings": {
         "title": "Detection settings",
         "data": {
           "start_power": "Start threshold",
@@ -36,7 +62,35 @@
           "end_power": "Below this the appliance counts as idle (set above standby).",
           "spike_max_s": "Shorter activity (anti-crease, post-run twitches) does not count as running."
         }
+      },
+      "programs": {
+        "title": "Manage programs",
+        "description": "{programs}",
+        "data": {
+          "program": "Program",
+          "action": "Action",
+          "new_name": "New name"
+        },
+        "data_description": {
+          "new_name": "Renaming to an existing name merges both programs."
+        }
+      },
+      "announcer": {
+        "title": "Announcements",
+        "data": {
+          "media_players": "Speakers",
+          "tts_entity": "Voice (TTS)",
+          "quiet_start": "Quiet from",
+          "quiet_end": "Quiet until",
+          "persons": "Only when one of these is home"
+        }
       }
+    },
+    "abort": {
+      "no_programs": "No programs learned yet."
+    },
+    "error": {
+      "name_required": "Please enter a new name."
     }
   },
   "selector": {
@@ -46,6 +100,12 @@
         "dryer": "Dryer",
         "dishwasher": "Dishwasher",
         "other": "Other"
+      }
+    },
+    "program_action": {
+      "options": {
+        "rename": "Rename",
+        "delete": "Delete"
       }
     }
   },
@@ -61,6 +121,9 @@
       },
       "learn_last": {
         "name": "Learn last cycle"
+      },
+      "test_announcement": {
+        "name": "Test announcement"
       }
     },
     "sensor": {
@@ -128,6 +191,17 @@
       },
       "progress": {
         "name": "Progress"
+      },
+      "last_announcement": {
+        "name": "Last announcement",
+        "state_attributes": {
+          "text": {
+            "name": "Text"
+          },
+          "last_skipped": {
+            "name": "Last skipped"
+          }
+        }
       }
     },
     "switch": {
@@ -138,11 +212,35 @@
             "name": "Program name"
           }
         }
+      },
+      "announcements": {
+        "name": "Announcements"
       }
     },
     "text": {
       "learn_name": {
         "name": "Program name (learning)"
+      },
+      "text_finished": {
+        "name": "Text when finished",
+        "state_attributes": {
+          "variables": {
+            "name": "Variables"
+          }
+        }
+      },
+      "text_started": {
+        "name": "Text when started (empty = off)",
+        "state_attributes": {
+          "variables": {
+            "name": "Variables"
+          }
+        }
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Volume"
       }
     }
   },
@@ -158,6 +256,9 @@
     },
     "bad_entry": {
       "message": "Not a loaded Cycle Sense appliance."
+    },
+    "announce_failed": {
+      "message": "Announcement failed – check speakers and voice."
     }
   },
   "services": {

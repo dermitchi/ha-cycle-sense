@@ -21,6 +21,7 @@ from homeassistant.util import dt as dt_util
 
 from . import CycleSenseConfigEntry
 from .engine import Phase
+from .announcer import Announcer
 from .entity import CycleSenseEntity
 from .manager import CycleManager
 
@@ -170,10 +171,14 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up sensors."""
-    async_add_entities(CycleSensor(entry.runtime_data, d) for d in SENSORS)
+    runtime = entry.runtime_data
+    if isinstance(runtime, Announcer):
+        async_add_entities([LastAnnouncementSensor(runtime, "last_announcement")])
+        return
+    async_add_entities(CycleSensor(runtime, d) for d in SENSORS)
 
 
-class CycleSensor(CycleSenseEntity, SensorEntity):
+class CycleSensor(CycleSenseEntity[CycleManager], SensorEntity):
     """Generic Cycle Sense sensor."""
 
     entity_description: CycleSensorDescription
@@ -193,3 +198,19 @@ class CycleSensor(CycleSenseEntity, SensorEntity):
         """Return extra attributes."""
         fn = self.entity_description.attrs_fn
         return fn(self.coordinator) if fn else None
+
+
+class LastAnnouncementSensor(CycleSenseEntity[Announcer], SensorEntity):
+    """When the last announcement was spoken, with its text."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the time of the last announcement."""
+        return self.coordinator.last_time
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return text and last skip reason."""
+        return {"text": self.coordinator.last_text, "last_skipped": self.coordinator.last_skipped}

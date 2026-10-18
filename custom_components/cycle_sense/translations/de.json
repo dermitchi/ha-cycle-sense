@@ -58,6 +58,9 @@
     "button": {
       "acknowledge": {
         "name": "Fertig quittieren"
+      },
+      "learn_last": {
+        "name": "Letzten Lauf einlernen"
       }
     },
     "sensor": {
@@ -87,10 +90,135 @@
         "name": "Energie Lauf"
       },
       "last_cycle": {
-        "name": "Letzter Lauf"
+        "name": "Letzter Lauf",
+        "state_attributes": {
+          "program": {
+            "name": "Programm"
+          }
+        }
       },
       "cycle_count": {
         "name": "Läufe"
+      },
+      "program": {
+        "name": "Programm",
+        "state_attributes": {
+          "confidence": {
+            "name": "Sicherheit"
+          },
+          "candidates": {
+            "name": "Kandidaten"
+          },
+          "programs": {
+            "name": "Gelernte Programme"
+          },
+          "unassigned_cycles": {
+            "name": "Ungruppierte Läufe"
+          },
+          "best_guess": {
+            "name": "Vermutung"
+          }
+        }
+      },
+      "remaining": {
+        "name": "Restzeit"
+      },
+      "finish_time": {
+        "name": "Fertig um"
+      },
+      "progress": {
+        "name": "Fortschritt"
+      }
+    },
+    "switch": {
+      "learn_mode": {
+        "name": "Einlernmodus",
+        "state_attributes": {
+          "program_name": {
+            "name": "Programmname"
+          }
+        }
+      }
+    },
+    "text": {
+      "learn_name": {
+        "name": "Programmname (Einlernen)"
+      }
+    }
+  },
+  "exceptions": {
+    "no_name": {
+      "message": "Bitte zuerst einen Programmnamen eingeben."
+    },
+    "no_cycle": {
+      "message": "Es gibt noch keinen fertigen Lauf zum Einlernen."
+    },
+    "no_program": {
+      "message": "Programm nicht gefunden."
+    },
+    "bad_entry": {
+      "message": "Kein geladenes Cycle-Sense-Gerät."
+    }
+  },
+  "services": {
+    "learn_last_cycle": {
+      "name": "Letzten Lauf einlernen",
+      "description": "Speichert den letzten fertigen Lauf als Aufnahme eines Programms.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "program": {
+          "name": "Programm",
+          "description": "Name des Programms."
+        }
+      }
+    },
+    "rename_program": {
+      "name": "Programm umbenennen",
+      "description": "Benennt ein gelerntes Programm um; ein vorhandener Name führt beide zusammen.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "program": {
+          "name": "Programm",
+          "description": "Name des Programms."
+        },
+        "new_name": {
+          "name": "Neuer Name",
+          "description": "Neuer Programmname."
+        }
+      }
+    },
+    "delete_program": {
+      "name": "Programm löschen",
+      "description": "Löscht ein gelerntes Programm.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "program": {
+          "name": "Programm",
+          "description": "Name des Programms."
+        }
+      }
+    },
+    "import_history": {
+      "name": "Verlauf importieren",
+      "description": "Sucht vergangene Läufe im Recorder und lernt daraus; ähnliche Läufe werden zu Programmen gruppiert.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "days": {
+          "name": "Tage",
+          "description": "Wie weit zurück gesucht wird."
+        }
       }
     }
   }

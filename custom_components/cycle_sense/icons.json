@@ -1,13 +1,80 @@
 {
   "entity": {
-    "binary_sensor": { "running": { "default": "mdi:washing-machine-off", "state": { "on": "mdi:washing-machine" } } },
-    "button": { "acknowledge": { "default": "mdi:check-circle-outline" } },
+    "binary_sensor": {
+      "running": {
+        "default": "mdi:washing-machine-off",
+        "state": {
+          "on": "mdi:washing-machine"
+        }
+      }
+    },
+    "button": {
+      "acknowledge": {
+        "default": "mdi:check-circle-outline"
+      },
+      "learn_last": {
+        "default": "mdi:content-save-plus"
+      }
+    },
     "sensor": {
-      "status": { "default": "mdi:washing-machine", "state": { "off": "mdi:washing-machine-off", "finished": "mdi:check-circle" } },
-      "elapsed": { "default": "mdi:timer-outline" },
-      "cycle_energy": { "default": "mdi:lightning-bolt" },
-      "last_cycle": { "default": "mdi:history" },
-      "cycle_count": { "default": "mdi:counter" }
+      "status": {
+        "default": "mdi:washing-machine",
+        "state": {
+          "off": "mdi:washing-machine-off",
+          "finished": "mdi:check-circle"
+        }
+      },
+      "elapsed": {
+        "default": "mdi:timer-outline"
+      },
+      "cycle_energy": {
+        "default": "mdi:lightning-bolt"
+      },
+      "last_cycle": {
+        "default": "mdi:history"
+      },
+      "cycle_count": {
+        "default": "mdi:counter"
+      },
+      "program": {
+        "default": "mdi:tag-text"
+      },
+      "remaining": {
+        "default": "mdi:timer-sand"
+      },
+      "finish_time": {
+        "default": "mdi:clock-end"
+      },
+      "progress": {
+        "default": "mdi:progress-clock"
+      }
+    },
+    "switch": {
+      "learn_mode": {
+        "default": "mdi:record-rec",
+        "state": {
+          "off": "mdi:record"
+        }
+      }
+    },
+    "text": {
+      "learn_name": {
+        "default": "mdi:form-textbox"
+      }
+    }
+  },
+  "services": {
+    "learn_last_cycle": {
+      "service": "mdi:content-save-plus"
+    },
+    "rename_program": {
+      "service": "mdi:rename"
+    },
+    "delete_program": {
+      "service": "mdi:delete"
+    },
+    "import_history": {
+      "service": "mdi:history"
     }
   }
 }

@@ -50,8 +50,13 @@ EVENT_STARTED: Final = f"{DOMAIN}_started"
 EVENT_FINISHED: Final = f"{DOMAIN}_finished"
 EVENT_ABORTED: Final = f"{DOMAIN}_aborted"
 EVENT_CLEARED: Final = f"{DOMAIN}_cleared"
+EVENT_LEARNED: Final = f"{DOMAIN}_learned"
 
 TICK_SECONDS: Final = 10
+NEAR_END_S: Final = 120
+"""Quiet time that ends a cycle once a recognised program is at its end."""
+MAX_PAUSE_S: Final = 2700
+"""Longest a learned in-program pause may stretch the end delay."""
 RESTORE_MAX_GAP_S: Final = 1800
 HISTORY_SIZE: Final = 50
 STORAGE_VERSION: Final = 1

@@ -58,6 +58,9 @@
     "button": {
       "acknowledge": {
         "name": "Acknowledge finished"
+      },
+      "learn_last": {
+        "name": "Learn last cycle"
       }
     },
     "sensor": {
@@ -87,10 +90,135 @@
         "name": "Cycle energy"
       },
       "last_cycle": {
-        "name": "Last cycle"
+        "name": "Last cycle",
+        "state_attributes": {
+          "program": {
+            "name": "Program"
+          }
+        }
       },
       "cycle_count": {
         "name": "Cycles"
+      },
+      "program": {
+        "name": "Program",
+        "state_attributes": {
+          "confidence": {
+            "name": "Confidence"
+          },
+          "candidates": {
+            "name": "Candidates"
+          },
+          "programs": {
+            "name": "Learned programs"
+          },
+          "unassigned_cycles": {
+            "name": "Ungrouped cycles"
+          },
+          "best_guess": {
+            "name": "Best guess"
+          }
+        }
+      },
+      "remaining": {
+        "name": "Remaining time"
+      },
+      "finish_time": {
+        "name": "Finish time"
+      },
+      "progress": {
+        "name": "Progress"
+      }
+    },
+    "switch": {
+      "learn_mode": {
+        "name": "Learn mode",
+        "state_attributes": {
+          "program_name": {
+            "name": "Program name"
+          }
+        }
+      }
+    },
+    "text": {
+      "learn_name": {
+        "name": "Program name (learning)"
+      }
+    }
+  },
+  "exceptions": {
+    "no_name": {
+      "message": "Enter a program name first."
+    },
+    "no_cycle": {
+      "message": "There is no finished cycle to learn yet."
+    },
+    "no_program": {
+      "message": "Program not found."
+    },
+    "bad_entry": {
+      "message": "Not a loaded Cycle Sense appliance."
+    }
+  },
+  "services": {
+    "learn_last_cycle": {
+      "name": "Learn last cycle",
+      "description": "Saves the last finished cycle as a recording of a program.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "program": {
+          "name": "Program",
+          "description": "Program name."
+        }
+      }
+    },
+    "rename_program": {
+      "name": "Rename program",
+      "description": "Renames a learned program; renaming to an existing name merges both.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "program": {
+          "name": "Program",
+          "description": "Program name."
+        },
+        "new_name": {
+          "name": "New name",
+          "description": "New program name."
+        }
+      }
+    },
+    "delete_program": {
+      "name": "Delete program",
+      "description": "Deletes a learned program.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "program": {
+          "name": "Program",
+          "description": "Program name."
+        }
+      }
+    },
+    "import_history": {
+      "name": "Import history",
+      "description": "Finds past cycles in the recorder and learns from them; similar cycles are grouped into programs.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "days": {
+          "name": "Days",
+          "description": "How far back to look."
+        }
       }
     }
   }

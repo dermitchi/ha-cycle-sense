@@ -14,7 +14,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfTime
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -41,6 +41,41 @@ def _last_end(m: CycleManager) -> datetime | None:
     return dt_util.utc_from_timestamp(last["end"]) if last and last.get("end") else None
 
 
+def _program(m: CycleManager) -> str | None:
+    return m.shown_match.profile.name if m.shown_match else None
+
+
+def _program_attrs(m: CycleManager) -> dict[str, Any]:
+    attrs: dict[str, Any] = {
+        "programs": [p.summary() for p in m.profiles.profiles],
+        "unassigned_cycles": len(m.profiles.unassigned),
+    }
+    if m.match and m.current_cycle:
+        attrs["confidence"] = round(m.match.confidence * 100)
+        attrs["best_guess"] = m.match.profile.name
+        attrs["candidates"] = {
+            prof.name: round(prob * 100) for prof, _, prob in m.matcher.candidates()[:3]
+        }
+    return attrs
+
+
+def _remaining(m: CycleManager) -> float | None:
+    rem = m.remaining_s
+    return None if rem is None else round(rem / 60)
+
+
+def _finish_time(m: CycleManager) -> datetime | None:
+    rem = m.remaining_s
+    if rem is None:
+        return None
+    # Round to the minute so the state does not change every tick.
+    return dt_util.utc_from_timestamp(round((time.time() + rem) / 60) * 60)
+
+
+def _progress(m: CycleManager) -> int | None:
+    return round(m.shown_match.progress * 100) if m.shown_match else None
+
+
 def _status_attrs(m: CycleManager) -> dict[str, Any]:
     attrs: dict[str, Any] = {}
     if (cycle := m.current_cycle) is not None:
@@ -61,6 +96,7 @@ def _last_attrs(m: CycleManager) -> dict[str, Any]:
         "energy_kwh": last["energy_kwh"],
         "peak_w": last["peak_w"],
         "reason": last["reason"],
+        "program": last.get("program"),
     }
 
 
@@ -79,6 +115,27 @@ SENSORS: tuple[CycleSensorDescription, ...] = (
         options=[p.value for p in Phase],
         value_fn=lambda m: m.phase.value,
         attrs_fn=_status_attrs,
+    ),
+    CycleSensorDescription(
+        key="program",
+        value_fn=_program,
+        attrs_fn=_program_attrs,
+    ),
+    CycleSensorDescription(
+        key="remaining",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        value_fn=_remaining,
+    ),
+    CycleSensorDescription(
+        key="finish_time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_finish_time,
+    ),
+    CycleSensorDescription(
+        key="progress",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=_progress,
     ),
     CycleSensorDescription(
         key="elapsed",

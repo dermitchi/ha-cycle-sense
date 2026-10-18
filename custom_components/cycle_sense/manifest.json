@@ -1,6 +1,7 @@
 {
   "domain": "cycle_sense",
   "name": "Cycle Sense",
+  "after_dependencies": ["recorder"],
   "codeowners": ["@ttvmitchi"],
   "config_flow": true,
   "documentation": "https://github.com/ttvmitchi/ha-cycle-sense",
@@ -8,5 +9,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/ttvmitchi/ha-cycle-sense/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

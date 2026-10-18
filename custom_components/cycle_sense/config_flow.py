@@ -14,7 +14,9 @@ from homeassistant.helpers import selector
 
 from .const import (
     APPLIANCE_TYPES,
+    CHIMES,
     CONF_APPLIANCE_TYPE,
+    CONF_CHIME,
     CONF_DOOR_SENSOR,
     CONF_ENTRY_TYPE,
     CONF_MEDIA_PLAYERS,
@@ -23,6 +25,7 @@ from .const import (
     CONF_QUIET_END,
     CONF_QUIET_START,
     CONF_TTS,
+    DEFAULT_CHIME,
     DEFAULT_QUIET_END,
     DEFAULT_QUIET_START,
     DOMAIN,
@@ -64,6 +67,12 @@ def _announcer_schema(defaults: dict[str, Any]) -> vol.Schema:
             ),
             vol.Required(CONF_TTS, description=sv(CONF_TTS)): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="tts")
+            ),
+            vol.Optional(CONF_CHIME, description=sv(CONF_CHIME, DEFAULT_CHIME)): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=CHIMES, translation_key=CONF_CHIME, custom_value=True,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Optional(
                 CONF_QUIET_START, description=sv(CONF_QUIET_START, DEFAULT_QUIET_START)

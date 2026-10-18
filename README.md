@@ -79,7 +79,7 @@ actions:
 
 ## Spoken announcements
 
-Add **Cycle Sense → Spoken announcements** once to get an extra device that speaks on your smart speakers (e.g. HomePods via the Apple TV integration) when an appliance finishes. Choose speakers, TTS voice, quiet hours and (optionally) people who must be home. On the device you get: *Announcements* on/off, *Text when finished*, *Text when started* (empty = off), *Volume* (restored afterwards), *Test announcement* and *Last announcement*.
+Add **Cycle Sense → Spoken announcements** once to get an extra device that speaks on your smart speakers (e.g. HomePods via the Apple TV integration) when an appliance finishes. Choose speakers, TTS voice, a sound played right before the voice (via Chime TTS), quiet hours and (optionally) people who must be home. On the device you get: *Announcements* on/off, *Text when finished*, *Text when started* (empty = off), *Volume* (restored afterwards), *Test announcement* and *Last announcement*.
 
 Texts support placeholders: `{geraet}` (appliance), `{programm}` (recognised program), `{dauer}` (minutes), `{energie}` (kWh), `{uhrzeit}` (time). Example: `{geraet} ist fertig – {programm}, {dauer} Minuten.`
 

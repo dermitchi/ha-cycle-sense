@@ -15,6 +15,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CHIME_NONE,
+    CONF_CHIME,
+    DEFAULT_CHIME,
     CONF_MEDIA_PLAYERS,
     CONF_PERSONS,
     CONF_QUIET_END,
@@ -197,6 +200,28 @@ class Announcer(DataUpdateCoordinator[None]):
             _LOGGER.warning("Announcement not possible: players=%s tts=%s", players, tts_entity)
             return False
 
+        chime = opts.get(CONF_CHIME, DEFAULT_CHIME)
+        if chime and chime != CHIME_NONE and self.hass.services.has_service("chime_tts", "say"):
+            async with self._lock:
+                # Chime TTS merges chime + speech into one file (no gap, one
+                # AirPlay start) and handles volume set/restore itself.
+                await self.hass.services.async_call(
+                    "chime_tts",
+                    "say",
+                    {
+                        ATTR_ENTITY_ID: players,
+                        "chime_path": chime,
+                        "message": text,
+                        "tts_platform": tts_entity,
+                        "volume_level": round(self.volume / 100, 2),
+                        "cache": True,
+                        "join_players": False,
+                    },
+                    blocking=True,
+                )
+            self._spoken(text)
+            return True
+
         async with self._lock:
             previous = {
                 p: self.hass.states.get(p).attributes.get("volume_level") for p in players
@@ -220,11 +245,15 @@ class Announcer(DataUpdateCoordinator[None]):
                 for player, level in previous.items():
                     if level is not None:
                         await self._set_volume([player], level)
+        self._spoken(text)
+        return True
+
+    @callback
+    def _spoken(self, text: str) -> None:
         self.last_text = text
         self.last_time = dt_util.now()
         self.last_skipped = None
         self.async_update_listeners()
-        return True
 
     async def _set_volume(self, players: list[str], level: float) -> None:
         try:

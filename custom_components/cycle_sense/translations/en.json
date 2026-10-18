@@ -30,7 +30,11 @@
           "tts_entity": "Voice (TTS)",
           "quiet_start": "Quiet from",
           "quiet_end": "Quiet until",
-          "persons": "Only when one of these is home"
+          "persons": "Only when one of these is home",
+          "chime": "Sound before speaking"
+        },
+        "data_description": {
+          "chime": "Played right before the voice (needs the Chime TTS integration)."
         }
       }
     },
@@ -82,7 +86,11 @@
           "tts_entity": "Voice (TTS)",
           "quiet_start": "Quiet from",
           "quiet_end": "Quiet until",
-          "persons": "Only when one of these is home"
+          "persons": "Only when one of these is home",
+          "chime": "Sound before speaking"
+        },
+        "data_description": {
+          "chime": "Played right before the voice (needs the Chime TTS integration)."
         }
       }
     },
@@ -106,6 +114,19 @@
       "options": {
         "rename": "Rename",
         "delete": "Delete"
+      }
+    },
+    "chime": {
+      "options": {
+        "none": "None",
+        "bright": "Bright",
+        "bells": "Bells",
+        "bells_2": "Bells 2",
+        "chord": "Chord",
+        "chirp": "Chirp",
+        "ding_dong": "Ding Dong",
+        "glockenspiel": "Glockenspiel",
+        "marimba": "Marimba"
       }
     }
   },

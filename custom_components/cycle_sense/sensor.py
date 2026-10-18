@@ -14,7 +14,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfTime
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -110,6 +110,14 @@ class CycleSensorDescription(SensorEntityDescription):
 
 
 SENSORS: tuple[CycleSensorDescription, ...] = (
+    CycleSensorDescription(
+        key="power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda m: m.power_w,
+    ),
     CycleSensorDescription(
         key="status",
         device_class=SensorDeviceClass.ENUM,

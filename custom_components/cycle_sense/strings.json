@@ -226,6 +226,9 @@
             "name": "Last skipped"
           }
         }
+      },
+      "power": {
+        "name": "Power"
       }
     },
     "switch": {

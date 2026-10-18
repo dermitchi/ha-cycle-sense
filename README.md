@@ -39,6 +39,7 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | Entity | Description |
 | --- | --- |
 | Status | `off`, `running`, `finished` |
+| Power | current watts, always shown (0 W when off) |
 | Running | binary sensor |
 | Program | recognised program (shown from 40 % confidence; attributes: confidence, candidates, learned programs) |
 | Remaining time / Finish time / Progress | from the recognised program |

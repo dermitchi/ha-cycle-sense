@@ -53,6 +53,9 @@
       },
       "last_announcement": {
         "default": "mdi:account-voice"
+      },
+      "power": {
+        "default": "mdi:flash"
       }
     },
     "switch": {

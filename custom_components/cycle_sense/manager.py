@@ -185,7 +185,10 @@ class CycleManager(DataUpdateCoordinator[None]):
     def _on_power(self, event: Event[EventStateChangedData]) -> None:
         state = event.data["new_state"]
         ts = state.last_updated.timestamp() if state else time.time()
+        before = self.power_w
         self._handle(self.detector.update(ts, _parse_power(state)))
+        if self.power_w != before:
+            self._refresh()
 
     @callback
     def _on_door(self, event: Event[EventStateChangedData]) -> None:
@@ -475,6 +478,13 @@ class CycleManager(DataUpdateCoordinator[None]):
         }
 
     # ------------------------------------------------------ entity helpers
+
+    @property
+    def power_w(self) -> float | None:
+        """Current power in watts (0 when switched off), None if unavailable."""
+        if not self.detector.available or self.detector.power is None:
+            return None
+        return round(self.detector.power, 1)
 
     @property
     def phase(self) -> Phase:

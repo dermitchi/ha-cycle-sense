@@ -84,6 +84,9 @@
       },
       "text_finished_device": {
         "default": "mdi:message-text"
+      },
+      "text_reminder": {
+        "default": "mdi:bell-ring-outline"
       }
     },
     "number": {

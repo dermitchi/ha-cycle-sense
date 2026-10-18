@@ -10,11 +10,15 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import ATTR_ENTITY_ID, STATE_HOME, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_REMINDERS,
+    DEFAULT_REMINDERS,
+    DEFAULT_TEXT_REMINDER,
     CHIME_NONE,
     CONF_CHIME,
     DEFAULT_CHIME,
@@ -36,7 +40,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-VARIABLES = ("geraet", "programm", "dauer", "energie", "uhrzeit")
+VARIABLES = ("geraet", "programm", "dauer", "energie", "uhrzeit", "seit")
 """Placeholders usable in announcement texts, e.g. "{geraet} ist fertig"."""
 
 
@@ -54,6 +58,14 @@ def render(template: str, values: dict[str, str]) -> str:
     except (ValueError, IndexError):
         text = template
     return " ".join(text.split())
+
+
+def _duration_text(minutes: int) -> str:
+    """German duration for speech, e.g. 60 -> "einer Stunde", 90 -> "90 Minuten"."""
+    if minutes % 60:
+        return f"{minutes} Minuten"
+    hours = minutes // 60
+    return "einer Stunde" if hours == 1 else f"{hours} Stunden"
 
 
 def _parse_time(value: str | None) -> dt_time | None:
@@ -86,6 +98,7 @@ class Announcer(DataUpdateCoordinator[None]):
         self.text_finished = DEFAULT_TEXT_FINISHED
         self.texts_finished: dict[str, str] = {}
         self.text_started = ""
+        self.text_reminder = DEFAULT_TEXT_REMINDER
         self.volume = DEFAULT_VOLUME
         self.last_text: str | None = None
         self.last_time: datetime | None = None
@@ -107,6 +120,7 @@ class Announcer(DataUpdateCoordinator[None]):
             self.text_finished = data.get("text_finished", DEFAULT_TEXT_FINISHED)
             self.texts_finished = data.get("texts_finished", {})
             self.text_started = data.get("text_started", "")
+            self.text_reminder = data.get("text_reminder", DEFAULT_TEXT_REMINDER)
             self.volume = data.get("volume", DEFAULT_VOLUME)
         entry = self.config_entry
         entry.async_on_unload(self.hass.bus.async_listen(EVENT_FINISHED, self._on_finished))
@@ -128,6 +142,7 @@ class Announcer(DataUpdateCoordinator[None]):
             "text_finished": self.text_finished,
             "texts_finished": self.texts_finished,
             "text_started": self.text_started,
+            "text_reminder": self.text_reminder,
             "volume": self.volume,
         }
 
@@ -138,6 +153,32 @@ class Announcer(DataUpdateCoordinator[None]):
         if event.data.get("reason") != "quiet":
             return
         self._schedule(self.finished_text(event.data.get("entry_id")), event.data)
+        self._plan_reminders(dict(event.data))
+
+    def reminder_minutes(self) -> list[int]:
+        """Configured reminder delays in minutes, e.g. "60, 120"."""
+        raw = str(self.options.get(CONF_REMINDERS, DEFAULT_REMINDERS))
+        return sorted({int(p) for p in raw.replace(";", ",").split(",") if p.strip().isdigit() and int(p) > 0})
+
+    @callback
+    def _plan_reminders(self, data: dict[str, Any]) -> None:
+        """Remind while the appliance still waits to be emptied."""
+        entry = self.hass.config_entries.async_get_entry(data.get("entry_id") or "")
+        manager = getattr(entry, "runtime_data", None) if entry else None
+        since = getattr(getattr(manager, "detector", None), "finished_since", None)
+        if since is None:
+            return
+        for minutes in self.reminder_minutes():
+
+            @callback
+            def _fire(_now: Any, minutes: int = minutes) -> None:
+                det = getattr(manager, "detector", None)
+                if det is None or det.phase != "finished" or det.finished_since != since:
+                    return  # emptied or a new cycle in between
+                values = data | {"seit": _duration_text(minutes)}
+                self._schedule(self.text_reminder, values)
+
+            self.config_entry.async_on_unload(async_call_later(self.hass, minutes * 60, _fire))
 
     @callback
     def _on_started(self, event: Event) -> None:
@@ -169,6 +210,7 @@ class Announcer(DataUpdateCoordinator[None]):
         duration = data.get("duration_min")
         energy = data.get("energy_kwh")
         return {
+            "seit": data.get("seit", ""),
             "geraet": data.get("name") or "",
             "programm": data.get("program") or "",
             "dauer": str(round(duration)) if duration is not None else "",

@@ -28,7 +28,10 @@ async def async_setup_entry(
         ]
         async_add_entities(
             [ApplianceFinishedText(runtime, e.entry_id, e.title) for e in appliances]
-            + [AnnouncerText(runtime, "text_started", "text_started")]
+            + [
+                AnnouncerText(runtime, "text_reminder", "text_reminder"),
+                AnnouncerText(runtime, "text_started", "text_started"),
+            ]
         )
     else:
         async_add_entities([LearnNameText(runtime, "learn_name")])

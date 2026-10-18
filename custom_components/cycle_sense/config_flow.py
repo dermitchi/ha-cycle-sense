@@ -23,10 +23,12 @@ from .const import (
     CONF_PERSONS,
     CONF_POWER_SENSOR,
     CONF_QUIET_END,
+    CONF_REMINDERS,
     CONF_QUIET_START,
     CONF_TTS,
     DEFAULT_CHIME,
     DEFAULT_QUIET_END,
+    DEFAULT_REMINDERS,
     DEFAULT_QUIET_START,
     DOMAIN,
     ENTRY_ANNOUNCER,
@@ -80,6 +82,9 @@ def _announcer_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_QUIET_END, description=sv(CONF_QUIET_END, DEFAULT_QUIET_END)
             ): selector.TimeSelector(),
+            vol.Optional(
+                CONF_REMINDERS, description=sv(CONF_REMINDERS, DEFAULT_REMINDERS)
+            ): selector.TextSelector(),
             vol.Optional(CONF_PERSONS, description=sv(CONF_PERSONS)): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="person", multiple=True)
             ),

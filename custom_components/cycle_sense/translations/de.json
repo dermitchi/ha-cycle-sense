@@ -31,10 +31,12 @@
           "quiet_start": "Ruhe ab",
           "quiet_end": "Ruhe bis",
           "persons": "Nur wenn eine dieser Personen zuhause ist",
-          "chime": "Ton vor der Durchsage"
+          "chime": "Ton vor der Durchsage",
+          "reminders": "Erinnerungen nach (Minuten)"
         },
         "data_description": {
-          "chime": "Kommt direkt vor der Stimme (braucht die Integration Chime TTS)."
+          "chime": "Kommt direkt vor der Stimme (braucht die Integration Chime TTS).",
+          "reminders": "Kommagetrennt, z. B. 60, 120. Nur solange noch nicht ausgeräumt wurde. Leer = aus."
         }
       }
     },
@@ -87,10 +89,12 @@
           "quiet_start": "Ruhe ab",
           "quiet_end": "Ruhe bis",
           "persons": "Nur wenn eine dieser Personen zuhause ist",
-          "chime": "Ton vor der Durchsage"
+          "chime": "Ton vor der Durchsage",
+          "reminders": "Erinnerungen nach (Minuten)"
         },
         "data_description": {
-          "chime": "Kommt direkt vor der Stimme (braucht die Integration Chime TTS)."
+          "chime": "Kommt direkt vor der Stimme (braucht die Integration Chime TTS).",
+          "reminders": "Kommagetrennt, z. B. 60, 120. Nur solange noch nicht ausgeräumt wurde. Leer = aus."
         }
       }
     },
@@ -266,6 +270,14 @@
       },
       "text_finished_device": {
         "name": "Text {device} fertig",
+        "state_attributes": {
+          "variables": {
+            "name": "Variablen"
+          }
+        }
+      },
+      "text_reminder": {
+        "name": "Text Erinnerung",
         "state_attributes": {
           "variables": {
             "name": "Variablen"

@@ -31,10 +31,12 @@
           "quiet_start": "Quiet from",
           "quiet_end": "Quiet until",
           "persons": "Only when one of these is home",
-          "chime": "Sound before speaking"
+          "chime": "Sound before speaking",
+          "reminders": "Reminders after (minutes)"
         },
         "data_description": {
-          "chime": "Played right before the voice (needs the Chime TTS integration)."
+          "chime": "Played right before the voice (needs the Chime TTS integration).",
+          "reminders": "Comma separated, e.g. 60, 120. Only while the appliance still waits to be emptied. Empty = off."
         }
       }
     },
@@ -87,10 +89,12 @@
           "quiet_start": "Quiet from",
           "quiet_end": "Quiet until",
           "persons": "Only when one of these is home",
-          "chime": "Sound before speaking"
+          "chime": "Sound before speaking",
+          "reminders": "Reminders after (minutes)"
         },
         "data_description": {
-          "chime": "Played right before the voice (needs the Chime TTS integration)."
+          "chime": "Played right before the voice (needs the Chime TTS integration).",
+          "reminders": "Comma separated, e.g. 60, 120. Only while the appliance still waits to be emptied. Empty = off."
         }
       }
     },
@@ -266,6 +270,14 @@
       },
       "text_finished_device": {
         "name": "Text {device} finished",
+        "state_attributes": {
+          "variables": {
+            "name": "Variables"
+          }
+        }
+      },
+      "text_reminder": {
+        "name": "Reminder text",
         "state_attributes": {
           "variables": {
             "name": "Variables"

@@ -211,6 +211,8 @@ class Announcer(DataUpdateCoordinator[None]):
                     {
                         ATTR_ENTITY_ID: players,
                         "chime_path": chime,
+                        # Short breath between chime and voice (ms).
+                        "offset": 400,
                         "message": text,
                         "tts_platform": tts_entity,
                         "volume_level": round(self.volume / 100, 2),

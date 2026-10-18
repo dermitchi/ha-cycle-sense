@@ -126,7 +126,10 @@
         "chirp": "Chirp",
         "ding_dong": "Ding Dong",
         "glockenspiel": "Glockenspiel",
-        "marimba": "Marimba"
+        "marimba": "Marimba",
+        "airport": "Airport (Gong)",
+        "classical": "Classical",
+        "doorbell": "Doorbell"
       }
     }
   },

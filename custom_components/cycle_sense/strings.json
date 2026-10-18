@@ -1,0 +1,97 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add appliance",
+        "description": "Pick the power sensor of the plug the appliance is connected to.",
+        "data": {
+          "name": "Name",
+          "power_sensor": "Power sensor",
+          "appliance_type": "Appliance type",
+          "door_sensor": "Door sensor (optional)"
+        },
+        "data_description": {
+          "door_sensor": "Opening the door clears the finished state."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This power sensor is already in use."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Detection settings",
+        "data": {
+          "start_power": "Start threshold",
+          "end_power": "Idle threshold",
+          "end_delay_s": "Finish after idle for",
+          "spike_max_s": "Ignore short bursts up to",
+          "min_cycle_s": "Minimum cycle length",
+          "finished_timeout_s": "Auto-clear finished after (0 = never)"
+        },
+        "data_description": {
+          "start_power": "A cycle starts when power stays above this for 2 minutes.",
+          "end_power": "Below this the appliance counts as idle (set above standby).",
+          "spike_max_s": "Shorter activity (anti-crease, post-run twitches) does not count as running."
+        }
+      }
+    }
+  },
+  "selector": {
+    "appliance_type": {
+      "options": {
+        "washer": "Washing machine",
+        "dryer": "Dryer",
+        "dishwasher": "Dishwasher",
+        "other": "Other"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "running": {
+        "name": "Running"
+      }
+    },
+    "button": {
+      "acknowledge": {
+        "name": "Acknowledge finished"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "running": "Running",
+          "finished": "Finished"
+        },
+        "state_attributes": {
+          "started": {
+            "name": "Started"
+          },
+          "quiet_for_s": {
+            "name": "Idle for (s)"
+          },
+          "finished_since": {
+            "name": "Finished since"
+          }
+        }
+      },
+      "elapsed": {
+        "name": "Elapsed"
+      },
+      "cycle_energy": {
+        "name": "Cycle energy"
+      },
+      "last_cycle": {
+        "name": "Last cycle"
+      },
+      "cycle_count": {
+        "name": "Cycles"
+      }
+    }
+  }
+}

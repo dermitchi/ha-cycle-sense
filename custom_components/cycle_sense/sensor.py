@@ -1,0 +1,138 @@
+"""Sensors for Cycle Sense."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime
+import time
+from typing import Any
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.const import UnitOfEnergy, UnitOfTime
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
+
+from . import CycleSenseConfigEntry
+from .engine import Phase
+from .entity import CycleSenseEntity
+from .manager import CycleManager
+
+
+def _elapsed(m: CycleManager) -> float | None:
+    cycle = m.current_cycle
+    return None if cycle is None else round((time.time() - cycle.start) / 60)
+
+
+def _energy(m: CycleManager) -> float | None:
+    if (cycle := m.current_cycle) is not None:
+        return round(cycle.energy_wh / 1000, 3)
+    return m.last_cycle["energy_kwh"] if m.last_cycle else None
+
+
+def _last_end(m: CycleManager) -> datetime | None:
+    last = m.last_cycle
+    return dt_util.utc_from_timestamp(last["end"]) if last and last.get("end") else None
+
+
+def _status_attrs(m: CycleManager) -> dict[str, Any]:
+    attrs: dict[str, Any] = {}
+    if (cycle := m.current_cycle) is not None:
+        attrs["started"] = dt_util.utc_from_timestamp(cycle.start).isoformat()
+        attrs["quiet_for_s"] = m.quiet_for_s
+    if m.phase == Phase.FINISHED and m.finished_since:
+        attrs["finished_since"] = m.finished_since.isoformat()
+    return attrs
+
+
+def _last_attrs(m: CycleManager) -> dict[str, Any]:
+    last = m.last_cycle
+    if not last:
+        return {}
+    return {
+        "start": dt_util.utc_from_timestamp(last["start"]).isoformat(),
+        "duration_min": last["duration_min"],
+        "energy_kwh": last["energy_kwh"],
+        "peak_w": last["peak_w"],
+        "reason": last["reason"],
+    }
+
+
+@dataclass(frozen=True, kw_only=True)
+class CycleSensorDescription(SensorEntityDescription):
+    """Describes a Cycle Sense sensor."""
+
+    value_fn: Callable[[CycleManager], Any]
+    attrs_fn: Callable[[CycleManager], dict[str, Any]] | None = None
+
+
+SENSORS: tuple[CycleSensorDescription, ...] = (
+    CycleSensorDescription(
+        key="status",
+        device_class=SensorDeviceClass.ENUM,
+        options=[p.value for p in Phase],
+        value_fn=lambda m: m.phase.value,
+        attrs_fn=_status_attrs,
+    ),
+    CycleSensorDescription(
+        key="elapsed",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        value_fn=_elapsed,
+    ),
+    CycleSensorDescription(
+        key="cycle_energy",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=2,
+        value_fn=_energy,
+    ),
+    CycleSensorDescription(
+        key="last_cycle",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_last_end,
+        attrs_fn=_last_attrs,
+    ),
+    CycleSensorDescription(
+        key="cycle_count",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda m: m.cycle_count,
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: CycleSenseConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up sensors."""
+    async_add_entities(CycleSensor(entry.runtime_data, d) for d in SENSORS)
+
+
+class CycleSensor(CycleSenseEntity, SensorEntity):
+    """Generic Cycle Sense sensor."""
+
+    entity_description: CycleSensorDescription
+
+    def __init__(self, manager: CycleManager, description: CycleSensorDescription) -> None:
+        """Initialize."""
+        super().__init__(manager, description.key)
+        self.entity_description = description
+
+    @property
+    def native_value(self) -> Any:
+        """Return the state."""
+        return self.entity_description.value_fn(self.coordinator)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra attributes."""
+        fn = self.entity_description.attrs_fn
+        return fn(self.coordinator) if fn else None

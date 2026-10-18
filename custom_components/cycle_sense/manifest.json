@@ -1,0 +1,12 @@
+{
+  "domain": "cycle_sense",
+  "name": "Cycle Sense",
+  "codeowners": ["@ttvmitchi"],
+  "config_flow": true,
+  "documentation": "https://github.com/ttvmitchi/ha-cycle-sense",
+  "integration_type": "device",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/ttvmitchi/ha-cycle-sense/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

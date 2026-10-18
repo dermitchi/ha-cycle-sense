@@ -1,0 +1,97 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Gerät hinzufügen",
+        "description": "Wähle den Leistungssensor der Steckdose, an der das Gerät hängt.",
+        "data": {
+          "name": "Name",
+          "power_sensor": "Leistungssensor",
+          "appliance_type": "Gerätetyp",
+          "door_sensor": "Türsensor (optional)"
+        },
+        "data_description": {
+          "door_sensor": "Öffnen der Tür setzt „Fertig“ zurück."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Dieser Leistungssensor wird bereits verwendet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Erkennung einstellen",
+        "data": {
+          "start_power": "Startschwelle",
+          "end_power": "Ruheschwelle",
+          "end_delay_s": "Ende nach Ruhe von",
+          "spike_max_s": "Kurze Impulse ignorieren bis",
+          "min_cycle_s": "Mindestdauer eines Laufs",
+          "finished_timeout_s": "„Fertig“ automatisch zurücksetzen nach (0 = nie)"
+        },
+        "data_description": {
+          "start_power": "Ein Lauf beginnt, wenn die Leistung 2 Minuten lang darüber liegt.",
+          "end_power": "Darunter gilt das Gerät als ruhig (über Standby wählen).",
+          "spike_max_s": "Kürzere Aktivität (Knitterschutz, Nachlauf) zählt nicht als Laufen."
+        }
+      }
+    }
+  },
+  "selector": {
+    "appliance_type": {
+      "options": {
+        "washer": "Waschmaschine",
+        "dryer": "Trockner",
+        "dishwasher": "Spülmaschine",
+        "other": "Sonstiges"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "running": {
+        "name": "Läuft"
+      }
+    },
+    "button": {
+      "acknowledge": {
+        "name": "Fertig quittieren"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Aus",
+          "running": "Läuft",
+          "finished": "Fertig"
+        },
+        "state_attributes": {
+          "started": {
+            "name": "Gestartet"
+          },
+          "quiet_for_s": {
+            "name": "Ruhig seit (s)"
+          },
+          "finished_since": {
+            "name": "Fertig seit"
+          }
+        }
+      },
+      "elapsed": {
+        "name": "Laufzeit"
+      },
+      "cycle_energy": {
+        "name": "Energie Lauf"
+      },
+      "last_cycle": {
+        "name": "Letzter Lauf"
+      },
+      "cycle_count": {
+        "name": "Läufe"
+      }
+    }
+  }
+}

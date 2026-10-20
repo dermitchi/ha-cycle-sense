@@ -80,3 +80,34 @@ def test_restore_roundtrip():
     ev = clone.update(1200, 2) + clone.tick(2000)
     assert types(ev) == [EventType.FINISHED]
     assert abs(ev[0].cycle.energy_wh - 800 * 1200 / 3600) < 1
+
+
+def test_program_end_finishes_despite_anti_crease():
+    cfg = DetectorConfig()
+    det = Detector(cfg, program_end_fn=lambda t: t >= 3600)
+    crease = [(300, 140), (60, 20), (300, 340), (60, 20)] * 3
+    events, t = [], 0.0
+    for dur, watts in [(3600, 2000)] + crease + [(2400, 3)]:
+        end = t + dur
+        while t < end:
+            events += det.update(t, watts)
+            t += 30
+    assert types(events) == [EventType.STARTED, EventType.FINISHED]
+    assert events[1].reason == FinishReason.PROGRAM_END
+    assert events[1].ts == 3600
+    assert det.phase == Phase.FINISHED
+    assert det.crease_active_at is None  # quiet long enough afterwards
+
+
+def test_heating_starts_new_cycle_during_anti_crease():
+    det = Detector(DetectorConfig(), program_end_fn=lambda t: 3600 <= t < 3700)
+    events, t = [], 0.0
+    for dur, watts in [(3600, 2000), (300, 140), (60, 3), (600, 2000)]:
+        end = t + dur
+        while t < end:
+            events += det.update(t, watts)
+            t += 30
+    assert types(events) == [
+        EventType.STARTED, EventType.FINISHED, EventType.CLEARED, EventType.STARTED
+    ]
+    assert events[2].reason == FinishReason.NEW_CYCLE

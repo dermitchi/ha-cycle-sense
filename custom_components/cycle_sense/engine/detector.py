@@ -48,6 +48,7 @@ class FinishReason(StrEnum):
     """Why a cycle ended or a finished state was cleared."""
 
     QUIET = "quiet"
+    PROGRAM_END = "program_end"
     SWITCHED_OFF = "switched_off"
     UNAVAILABLE = "unavailable"
     FORCED = "forced"
@@ -74,6 +75,8 @@ class DetectorConfig:
     min_cycle_s: float = 300.0
     finished_timeout_s: float = 0.0
     unavailable_abort_s: float = 3600.0
+    crease_start_power: float = 1000.0
+    crease_quiet_s: float = 1200.0
     bin_s: int = 60
 
     @classmethod
@@ -164,16 +167,22 @@ class DetectorEvent:
 
 EndDelayFn = Callable[[float, float], float]
 """(quiet_since, now) -> seconds of quiet required before finishing."""
+ProgramEndFn = Callable[[float], bool]
+"""(now) -> True once a recognised program has reached its learned end."""
 
 
 class Detector:
     """Deterministic cycle state machine."""
 
     def __init__(
-        self, config: DetectorConfig, end_delay_fn: EndDelayFn | None = None
+        self,
+        config: DetectorConfig,
+        end_delay_fn: EndDelayFn | None = None,
+        program_end_fn: ProgramEndFn | None = None,
     ) -> None:
         self.config = config
         self.end_delay_fn = end_delay_fn
+        self.program_end_fn = program_end_fn
         self.phase = Phase.OFF
         self.cycle: CycleRecord | None = None
         self.last_cycle: CycleRecord | None = None
@@ -188,6 +197,10 @@ class Detector:
         self.last_active: float | None = None
         self.off_since: float | None = None
         self.finished_since: float | None = None
+        # Set when a cycle ended at its learned program end while the
+        # appliance kept moving (anti-crease). Until it has been quiet for a
+        # while, only heating-level power may start a new cycle.
+        self.crease_active_at: float | None = None
 
     # ------------------------------------------------------------------ API
 
@@ -307,6 +320,8 @@ class Detector:
                 cands.append(self.off_since + cfg.off_confirm_s)
             if cfg.finished_timeout_s > 0 and self.finished_since is not None:
                 cands.append(self.finished_since + cfg.finished_timeout_s)
+            if self.crease_active_at is not None:
+                cands.append(self.crease_active_at + cfg.crease_quiet_s)
         return min(cands) if cands else None
 
     def _integrate(self, ts: float) -> None:
@@ -343,6 +358,13 @@ class Detector:
             self.off_since = None
 
         if self.phase in (Phase.OFF, Phase.FINISHED):
+            if self.crease_active_at is not None:
+                if power > cfg.start_power:
+                    self.crease_active_at = ts
+                if power <= cfg.crease_start_power:
+                    if self.cand_start is not None and self.cand_below_since is None:
+                        self.cand_below_since = ts
+                    return
             if power > cfg.start_power:
                 if self.cand_start is None:
                     self.cand_start = ts
@@ -395,6 +417,14 @@ class Detector:
             ):
                 self._clear(t, FinishReason.TIMEOUT, events)
                 return True
+            if (
+                self.crease_active_at is not None
+                and self.available
+                and (self.power or 0.0) <= cfg.start_power
+                and t - self.crease_active_at >= cfg.crease_quiet_s
+            ):
+                self.crease_active_at = None
+                return True
             return False
 
         if self.phase != Phase.RUNNING:
@@ -411,6 +441,10 @@ class Detector:
 
         if self.off_since is not None and t - self.off_since >= cfg.off_confirm_s:
             self._finish(t, FinishReason.SWITCHED_OFF, events)
+            return True
+
+        if self.program_end_fn is not None and self.program_end_fn(t):
+            self._finish(t, FinishReason.PROGRAM_END, events)
             return True
 
         if self.run_start is not None:
@@ -457,7 +491,7 @@ class Detector:
         assert cycle is not None
         if reason == FinishReason.UNAVAILABLE and self.unavailable_since is not None:
             end = min(self._active_end(t), self.unavailable_since)
-        elif reason == FinishReason.FORCED:
+        elif reason in (FinishReason.FORCED, FinishReason.PROGRAM_END):
             end = t
         else:
             end = self._active_end(t)
@@ -487,12 +521,15 @@ class Detector:
             return
         self.phase = Phase.FINISHED
         self.finished_since = t
+        if reason == FinishReason.PROGRAM_END:
+            self.crease_active_at = t
 
     def _clear(self, t: float, reason: FinishReason, events: list[DetectorEvent]) -> None:
         if self.phase != Phase.FINISHED:
             return
         self.phase = Phase.OFF
         self.finished_since = None
+        self.crease_active_at = None
         events.append(DetectorEvent(EventType.CLEARED, t, reason, self.last_cycle))
 
     # ---------------------------------------------------------- persistence
@@ -509,6 +546,7 @@ class Detector:
         "last_active",
         "off_since",
         "finished_since",
+        "crease_active_at",
     )
 
     def to_dict(self) -> dict[str, Any]:

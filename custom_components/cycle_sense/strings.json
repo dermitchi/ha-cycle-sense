@@ -320,6 +320,10 @@
         "program": {
           "name": "Program",
           "description": "Program name."
+        },
+        "minutes": {
+          "name": "Duration (minutes)",
+          "description": "Keep only the first minutes, e.g. when anti-crease ran afterwards."
         }
       }
     },

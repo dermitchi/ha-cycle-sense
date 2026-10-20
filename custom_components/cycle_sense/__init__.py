@@ -38,7 +38,13 @@ _ENTRY = vol.Required(ATTR_ENTRY)
 _NAME = vol.All(cv.string, vol.Length(min=1, max=60))
 
 SCHEMAS = {
-    "learn_last_cycle": vol.Schema({_ENTRY: cv.string, vol.Required("program"): _NAME}),
+    "learn_last_cycle": vol.Schema(
+        {
+            _ENTRY: cv.string,
+            vol.Required("program"): _NAME,
+            vol.Optional("minutes"): vol.All(vol.Coerce(float), vol.Range(min=1, max=600)),
+        }
+    ),
     "rename_program": vol.Schema(
         {_ENTRY: cv.string, vol.Required("program"): _NAME, vol.Required("new_name"): _NAME}
     ),
@@ -66,7 +72,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def learn_last_cycle(call: ServiceCall) -> ServiceResponse:
         try:
-            result = await _manager(hass, call).async_learn_last(call.data["program"])
+            result = await _manager(hass, call).async_learn_last(
+                call.data["program"], call.data.get("minutes")
+            )
         except ValueError as err:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key=str(err)

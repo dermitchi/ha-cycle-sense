@@ -150,7 +150,7 @@ class Announcer(DataUpdateCoordinator[None]):
 
     @callback
     def _on_finished(self, event: Event) -> None:
-        if event.data.get("reason") != "quiet":
+        if event.data.get("reason") not in ("quiet", "program_end"):
             return
         self._schedule(self.finished_text(event.data.get("entry_id")), event.data)
         self._plan_reminders(dict(event.data))

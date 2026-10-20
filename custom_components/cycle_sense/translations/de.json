@@ -320,6 +320,10 @@
         "program": {
           "name": "Programm",
           "description": "Name des Programms."
+        },
+        "minutes": {
+          "name": "Dauer (Minuten)",
+          "description": "Nur die ersten Minuten speichern, z. B. wenn danach noch Knitterschutz lief."
         }
       }
     },

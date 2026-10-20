@@ -10,6 +10,14 @@ learn_last_cycle:
       example: "Baumwolle 40°"
       selector:
         text:
+    minutes:
+      required: false
+      example: 61
+      selector:
+        number:
+          min: 1
+          max: 600
+          unit_of_measurement: min
 
 rename_program:
   fields:

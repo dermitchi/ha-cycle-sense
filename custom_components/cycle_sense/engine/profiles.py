@@ -38,6 +38,8 @@ CONFIDENT = 0.6
 """Confidence needed before a match may change the end delay."""
 SHOW_CONFIDENCE = 0.4
 """Confidence needed before a match is shown to the user."""
+END_CONFIDENT = 0.8
+"""Confidence needed to call a still-active run finished at its program end."""
 NEAR_END_FRACTION = 0.05
 NEAR_END_MIN_ELAPSED = 0.85
 """Fast finish only once the run is at least this long relative to the program."""
@@ -396,6 +398,27 @@ class Matcher:
             position=pos,
             remaining_s=remaining,
             progress=min(1.0, (pos + 1) / m),
+        )
+
+    def program_end_reached(self) -> bool:
+        """True once a confidently recognised program has run its full length.
+
+        Some appliances keep moving after the program (anti-crease drum turns
+        of 100–350 W for minutes). That looks like activity, so the quiet
+        rule alone would report the end far too late.
+        """
+        if self.pinned is not None:
+            return False
+        match = self.best()
+        if match is None or match.confidence < END_CONFIDENT:
+            return False
+        m = len(match.profile.template)
+        # Only right at the learned end: a run that is already longer is
+        # some other program that merely starts the same way.
+        return (
+            m <= self.n <= m + max(3, int(m * NEAR_END_FRACTION))
+            and match.position >= m - 2
+            and match.distance <= ACCEPT_DISTANCE
         )
 
     def end_delay(self, default_s: float, near_end_s: float, max_pause_s: float) -> float:

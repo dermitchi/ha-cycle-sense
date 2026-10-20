@@ -73,7 +73,12 @@ _EVENT_NAMES = {
     EventType.ABORTED: EVENT_ABORTED,
     EventType.CLEARED: EVENT_CLEARED,
 }
-_LEARNABLE = {FinishReason.QUIET, FinishReason.SWITCHED_OFF, FinishReason.FORCED}
+_LEARNABLE = {
+    FinishReason.QUIET,
+    FinishReason.PROGRAM_END,
+    FinishReason.SWITCHED_OFF,
+    FinishReason.FORCED,
+}
 _SAVE_DELAY_S = 60
 
 
@@ -94,11 +99,18 @@ def _ts(value: float | None) -> datetime | None:
     return dt_util.utc_from_timestamp(value) if value is not None else None
 
 
-def _sample(cycle: CycleRecord, source: str) -> Sample:
+def _sample(cycle: CycleRecord, source: str, minutes: float | None = None) -> Sample:
+    if minutes is None or minutes * 60 >= cycle.duration_s:
+        trace, duration, energy = cycle.trace(), cycle.duration_s, cycle.energy_wh
+    else:
+        # Cut off what followed the real program end (e.g. anti-crease).
+        trace = cycle.trace()[: max(1, round(minutes * 60 / cycle.bin_s))]
+        duration = minutes * 60
+        energy = sum(trace) * cycle.bin_s / 3600
     return Sample(
-        trace=cycle.trace(),
-        duration_s=cycle.duration_s,
-        energy_wh=cycle.energy_wh,
+        trace=trace,
+        duration_s=duration,
+        energy_wh=energy,
         recorded=cycle.start,
         source=source,
     )
@@ -114,7 +126,9 @@ class CycleManager(DataUpdateCoordinator[None]):
         super().__init__(hass, _LOGGER, config_entry=entry, name=entry.title)
         appliance = entry.data.get(CONF_APPLIANCE_TYPE, TYPE_OTHER)
         self.config = DetectorConfig.from_dict({**TYPE_DEFAULTS[appliance], **entry.options})
-        self.detector = Detector(self.config, end_delay_fn=self._end_delay)
+        self.detector = Detector(
+            self.config, end_delay_fn=self._end_delay, program_end_fn=self._program_end
+        )
         self.profiles = ProfileStore()
         self.matcher = Matcher(self.profiles, self.config.bin_s, self.config.end_power)
         self.power_entity: str = entry.data[CONF_POWER_SENSOR]
@@ -230,15 +244,21 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._refresh()
         self._save()
 
-    async def async_learn_last(self, name: str | None = None) -> LearnResult:
-        """Store the last finished cycle under ``name`` (default: learn name)."""
+    async def async_learn_last(
+        self, name: str | None = None, minutes: float | None = None
+    ) -> LearnResult:
+        """Store the last finished cycle under ``name`` (default: learn name).
+
+        ``minutes`` keeps only the start of the run, for when the cycle was
+        reported late and the real program was shorter.
+        """
         name = (name or self.learn_name).strip()
         cycle = self.detector.last_cycle
         if not name:
             raise ValueError("no_name")
         if cycle is None or not cycle.bins:
             raise ValueError("no_cycle")
-        return await self._async_learn(_sample(cycle, "learn"), name)
+        return await self._async_learn(_sample(cycle, "learn", minutes), name)
 
     async def async_rename_program(self, old: str, new: str) -> bool:
         """Rename (or merge) a program."""
@@ -307,6 +327,12 @@ class CycleManager(DataUpdateCoordinator[None]):
     def _end_delay(self, quiet_since: float, now: float) -> float:
         self._sync_matcher()
         return self.matcher.end_delay(self.config.end_delay_s, NEAR_END_S, MAX_PAUSE_S)
+
+    def _program_end(self, now: float) -> bool:
+        if self.learn_mode:
+            return False
+        self._sync_matcher()
+        return self.matcher.program_end_reached()
 
     @callback
     def _apply_pin(self) -> None:

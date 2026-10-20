@@ -148,3 +148,33 @@ def test_store_roundtrip():
     clone = ProfileStore.from_dict(store.to_dict())
     assert clone.names() == ["A"] and len(clone.unassigned) == 1
     assert clone.get("A").template == store.get("A").template
+
+
+def test_program_end_only_at_learned_length():
+    store = ProfileStore()
+    store.add_sample("P", sample(wash(), source="learn"))
+    m = Matcher(store, 60, 8)
+    m.reset()
+    run = wash(seed=1) + [140.0] * 20
+    m_len = len(store.profiles[0].template)
+    hits = []
+    for k, p in enumerate(run, 1):
+        m.push(p)
+        if m.program_end_reached():
+            hits.append(k)
+    assert hits and hits[0] == m_len
+    assert max(hits) <= m_len + 3
+
+
+def test_program_end_not_for_longer_program():
+    store = ProfileStore()
+    store.add_sample("Short", sample(wash(minutes_wash=30), source="learn"))
+    m = Matcher(store, 60, 8)
+    m.reset()
+    run = wash(minutes_wash=30, minutes_spin=0) + [100.0] * 30 + [400.0] * 8
+    hits = []
+    for p in run:
+        m.push(p)
+        hits.append(m.program_end_reached())
+    m_len = len(store.profiles[0].template)
+    assert not any(hits[m_len + 3 :])

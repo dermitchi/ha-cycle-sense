@@ -290,6 +290,12 @@ class ProfileStore:
         del self.unassigned[:-MAX_UNASSIGNED]
         return LearnResult(None)
 
+    def clear_unassigned(self) -> int:
+        """Forget all runs not belonging to a program; returns how many."""
+        count = len(self.unassigned)
+        self.unassigned = []
+        return count
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize."""
         return {
@@ -437,7 +443,9 @@ class Matcher:
         near = max(2, int(len(tmpl) * NEAR_END_FRACTION))
         if (
             active_end - match.position <= near
-            and self.n >= NEAR_END_MIN_ELAPSED * len(tmpl)
+            and NEAR_END_MIN_ELAPSED * len(tmpl)
+            <= self.n
+            <= len(tmpl) + max(3, int(len(tmpl) * NEAR_END_FRACTION))
         ):
             return min(default_s, near_end_s)
         pause = 0

@@ -49,6 +49,7 @@ SCHEMAS = {
         {_ENTRY: cv.string, vol.Required("program"): _NAME, vol.Required("new_name"): _NAME}
     ),
     "delete_program": vol.Schema({_ENTRY: cv.string, vol.Required("program"): _NAME}),
+    "clear_unassigned": vol.Schema({_ENTRY: cv.string}),
     "import_history": vol.Schema(
         {_ENTRY: cv.string, vol.Optional("days", default=10): vol.All(int, vol.Range(1, 60))}
     ),
@@ -91,6 +92,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         if not await _manager(hass, call).async_delete_program(call.data["program"]):
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_program")
 
+    async def clear_unassigned(call: ServiceCall) -> ServiceResponse:
+        return {"removed": await _manager(hass, call).async_clear_unassigned()}
+
     async def import_history(call: ServiceCall) -> ServiceResponse:
         return await _manager(hass, call).async_import_history(call.data["days"])
 
@@ -100,6 +104,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     )
     hass.services.async_register(DOMAIN, "rename_program", rename_program, SCHEMAS["rename_program"])
     hass.services.async_register(DOMAIN, "delete_program", delete_program, SCHEMAS["delete_program"])
+    hass.services.async_register(
+        DOMAIN, "clear_unassigned", clear_unassigned, SCHEMAS["clear_unassigned"],
+        supports_response=SupportsResponse.OPTIONAL,
+    )
     hass.services.async_register(
         DOMAIN, "import_history", import_history, SCHEMAS["import_history"],
         supports_response=SupportsResponse.OPTIONAL,

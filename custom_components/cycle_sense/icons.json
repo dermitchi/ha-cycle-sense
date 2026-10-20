@@ -6,6 +6,12 @@
         "state": {
           "on": "mdi:washing-machine"
         }
+      },
+      "anti_crease": {
+        "default": "mdi:sync-off",
+        "state": {
+          "on": "mdi:sync"
+        }
       }
     },
     "button": {
@@ -107,6 +113,9 @@
     },
     "import_history": {
       "service": "mdi:history"
+    },
+    "clear_unassigned": {
+      "service": "mdi:delete-sweep"
     }
   }
 }

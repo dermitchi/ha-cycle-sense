@@ -1,4 +1,4 @@
-"""Running binary sensor."""
+"""Running and anti-crease binary sensors."""
 
 from __future__ import annotations
 
@@ -18,7 +18,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up binary sensors."""
-    async_add_entities([RunningBinarySensor(entry.runtime_data, "running")])
+    async_add_entities(
+        [
+            RunningBinarySensor(entry.runtime_data, "running"),
+            AntiCreaseBinarySensor(entry.runtime_data, "anti_crease"),
+        ]
+    )
 
 
 class RunningBinarySensor(CycleSenseEntity[CycleManager], BinarySensorEntity):
@@ -30,3 +35,14 @@ class RunningBinarySensor(CycleSenseEntity[CycleManager], BinarySensorEntity):
     def is_on(self) -> bool:
         """Return true while running."""
         return self.coordinator.phase == Phase.RUNNING
+
+
+class AntiCreaseBinarySensor(CycleSenseEntity[CycleManager], BinarySensorEntity):
+    """On while the finished appliance still turns the drum (anti-crease)."""
+
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+
+    @property
+    def is_on(self) -> bool:
+        """Return true during anti-crease."""
+        return self.coordinator.anti_crease

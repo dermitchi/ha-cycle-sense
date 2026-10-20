@@ -141,6 +141,9 @@
     "binary_sensor": {
       "running": {
         "name": "Running"
+      },
+      "anti_crease": {
+        "name": "Anti-crease"
       }
     },
     "button": {
@@ -370,6 +373,16 @@
         "days": {
           "name": "Days",
           "description": "How far back to look."
+        }
+      }
+    },
+    "clear_unassigned": {
+      "name": "Clear unassigned runs",
+      "description": "Forgets all recorded runs that belong to no program.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
         }
       }
     }

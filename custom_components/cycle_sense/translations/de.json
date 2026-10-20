@@ -141,6 +141,9 @@
     "binary_sensor": {
       "running": {
         "name": "Läuft"
+      },
+      "anti_crease": {
+        "name": "Knitterschutz"
       }
     },
     "button": {
@@ -370,6 +373,16 @@
         "days": {
           "name": "Tage",
           "description": "Wie weit zurück gesucht wird."
+        }
+      }
+    },
+    "clear_unassigned": {
+      "name": "Ungruppierte Läufe löschen",
+      "description": "Vergisst alle aufgezeichneten Läufe, die zu keinem Programm gehören.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
         }
       }
     }

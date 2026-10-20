@@ -80,6 +80,8 @@ _LEARNABLE = {
     FinishReason.FORCED,
 }
 _SAVE_DELAY_S = 60
+_CREASE_WINDOW_S = 300
+"""Movement within this time after finishing counts as anti-crease."""
 
 
 def _parse_power(state: State | None) -> float | None:
@@ -146,6 +148,7 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._unsubs: list[CALLBACK_TYPE] = []
         self._last_refresh = 0.0
         self._last_save = 0.0
+        self._crease_shown = False
 
     @property
     def auto_name_fmt(self) -> str:
@@ -214,8 +217,10 @@ class CycleManager(DataUpdateCoordinator[None]):
     def _on_tick(self, _now: datetime) -> None:
         now = time.time()
         self._handle(self.detector.tick(now))
-        if self._sync_matcher() or (
-            self.detector.phase == Phase.RUNNING and now - self._last_refresh >= 60
+        if (
+            self._sync_matcher()
+            or (self.detector.phase == Phase.RUNNING and now - self._last_refresh >= 60)
+            or self.anti_crease != self._crease_shown
         ):
             self._refresh()
         if self.detector.cycle is not None and now - self._last_save >= _SAVE_DELAY_S:
@@ -259,6 +264,13 @@ class CycleManager(DataUpdateCoordinator[None]):
         if cycle is None or not cycle.bins:
             raise ValueError("no_cycle")
         return await self._async_learn(_sample(cycle, "learn", minutes), name)
+
+    async def async_clear_unassigned(self) -> int:
+        """Forget recorded runs that belong to no program."""
+        async with self._lock:
+            count = self.profiles.clear_unassigned()
+        self._save()
+        return count
 
     async def async_rename_program(self, old: str, new: str) -> bool:
         """Rename (or merge) a program."""
@@ -465,6 +477,7 @@ class CycleManager(DataUpdateCoordinator[None]):
     @callback
     def _refresh(self) -> None:
         self._last_refresh = time.time()
+        self._crease_shown = self.anti_crease
         self.async_update_listeners()
 
     def _summary(self, cycle: CycleRecord) -> dict[str, Any]:
@@ -521,6 +534,14 @@ class CycleManager(DataUpdateCoordinator[None]):
     def current_cycle(self) -> CycleRecord | None:
         """The running cycle, or None."""
         return self.detector.cycle if self.detector.phase == Phase.RUNNING else None
+
+    @property
+    def anti_crease(self) -> bool:
+        """Finished, but the drum still moves now and then (anti-crease)."""
+        det = self.detector
+        if det.phase != Phase.FINISHED or det.motion_at is None:
+            return False
+        return time.time() - det.motion_at < _CREASE_WINDOW_S
 
     @property
     def last_cycle(self) -> dict[str, Any] | None:

@@ -178,3 +178,22 @@ def test_program_end_not_for_longer_program():
         hits.append(m.program_end_reached())
     m_len = len(store.profiles[0].template)
     assert not any(hits[m_len + 3 :])
+
+
+def test_near_end_rule_not_for_much_longer_run():
+    store = ProfileStore()
+    store.add_sample("P", sample(wash(minutes_wash=30), source="learn"))
+    m = Matcher(store, 60, 8)
+    m.reset()
+    m_len = len(store.profiles[0].template)
+    for p in wash(minutes_wash=30, minutes_spin=0) + [100.0] * 30:
+        m.push(p)
+    assert m.n > m_len + 3
+    assert m.end_delay(300, 120, 2700) == 300
+
+
+def test_clear_unassigned():
+    store = ProfileStore()
+    store.learn(sample(wash()))
+    assert store.clear_unassigned() == 1
+    assert store.unassigned == []

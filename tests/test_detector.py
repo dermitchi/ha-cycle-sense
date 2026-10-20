@@ -111,3 +111,15 @@ def test_heating_starts_new_cycle_during_anti_crease():
         EventType.STARTED, EventType.FINISHED, EventType.CLEARED, EventType.STARTED
     ]
     assert events[2].reason == FinishReason.NEW_CYCLE
+
+
+def test_motion_after_program_end_is_tracked():
+    det = Detector(DetectorConfig(), program_end_fn=lambda t: t >= 3600)
+    t = 0.0
+    for dur, watts in [(3600, 2000), (300, 140), (600, 3)]:
+        end = t + dur
+        while t < end:
+            det.update(t, watts)
+            t += 30
+    assert det.phase == Phase.FINISHED
+    assert det.motion_at == 3870

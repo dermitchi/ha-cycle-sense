@@ -201,6 +201,8 @@ class Detector:
         # appliance kept moving (anti-crease). Until it has been quiet for a
         # while, only heating-level power may start a new cycle.
         self.crease_active_at: float | None = None
+        # Last time the appliance moved after the cycle finished.
+        self.motion_at: float | None = None
 
     # ------------------------------------------------------------------ API
 
@@ -357,6 +359,8 @@ class Detector:
         else:
             self.off_since = None
 
+        if self.phase == Phase.FINISHED and power > cfg.end_power:
+            self.motion_at = ts
         if self.phase in (Phase.OFF, Phase.FINISHED):
             if self.crease_active_at is not None:
                 if power > cfg.start_power:
@@ -521,6 +525,7 @@ class Detector:
             return
         self.phase = Phase.FINISHED
         self.finished_since = t
+        self.motion_at = t if reason == FinishReason.PROGRAM_END else None
         if reason == FinishReason.PROGRAM_END:
             self.crease_active_at = t
 
@@ -530,6 +535,7 @@ class Detector:
         self.phase = Phase.OFF
         self.finished_since = None
         self.crease_active_at = None
+        self.motion_at = None
         events.append(DetectorEvent(EventType.CLEARED, t, reason, self.last_cycle))
 
     # ---------------------------------------------------------- persistence
@@ -547,6 +553,7 @@ class Detector:
         "off_since",
         "finished_since",
         "crease_active_at",
+        "motion_at",
     )
 
     def to_dict(self) -> dict[str, Any]:

@@ -332,6 +332,17 @@
       "volume": {
         "name": "Lautstärke"
       }
+    },
+    "select": {
+      "load_next": {
+        "name": "Beladung (laufender/nächster Lauf)",
+        "state": {
+          "none": "Nicht angegeben",
+          "low": "Wenig (etwa ein Drittel)",
+          "half": "Halb voll",
+          "full": "Voll"
+        }
+      }
     }
   },
   "exceptions": {

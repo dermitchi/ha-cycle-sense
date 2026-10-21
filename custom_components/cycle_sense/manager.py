@@ -28,6 +28,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CARRY_LOAD_WINDOW_S,
     CONF_APPLIANCE_TYPE,
     CONF_DOOR_SENSOR,
     CONF_POWER_SENSOR,
@@ -44,7 +45,9 @@ from .const import (
     STORAGE_VERSION,
     TICK_SECONDS,
     TYPE_DEFAULTS,
+    TYPE_DRYER,
     TYPE_OTHER,
+    TYPE_WASHER,
 )
 from .engine import (
     CONFIDENT,
@@ -66,6 +69,7 @@ from .engine import (
     estimate_load,
     heat_wh,
     heating_end,
+    predict_duration,
     predict_remaining,
     tail_bins,
 )
@@ -138,6 +142,7 @@ class CycleManager(DataUpdateCoordinator[None]):
         super().__init__(hass, _LOGGER, config_entry=entry, name=entry.title)
         appliance = entry.data.get(CONF_APPLIANCE_TYPE, TYPE_OTHER)
         self.config = DetectorConfig.from_dict({**TYPE_DEFAULTS[appliance], **entry.options})
+        self.appliance = appliance
         self.base_share = BASE_SHARE.get(appliance, DEFAULT_BASE_SHARE)
         self.phases = PhaseTracker(appliance)
         self.detector = Detector(
@@ -152,6 +157,8 @@ class CycleManager(DataUpdateCoordinator[None]):
         self.learn_mode = False
         self.learn_name = ""
         self.load_next: float | None = None
+        self.load_carried: float | None = None
+        """Load taken over from the washer for the running dryer cycle."""
         self.match: Match | None = None
         self._matched_start: float | None = None
         self._store: Store[dict[str, Any]] = Store(
@@ -178,6 +185,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             self.learn_mode = data.get("learn_mode", False)
             self.learn_name = data.get("learn_name", "")
             self.load_next = data.get("load_next")
+            self.load_carried = data.get("load_carried")
             self.profiles = await self.hass.async_add_executor_job(
                 ProfileStore.from_dict, data.get("profiles")
             )
@@ -288,6 +296,8 @@ class CycleManager(DataUpdateCoordinator[None]):
         """Tell how full the drum was (last run) or will be (next run), 0..1."""
         if target == "next":
             self.load_next = load
+        elif target == "clear":
+            self.load_next = None
         else:
             if not self.history:
                 raise ValueError("no_cycle")
@@ -424,6 +434,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             data = self._event_data(event)
             if event.type == EventType.STARTED:
                 self._sync_matcher()
+                self.load_carried = self._washer_load() if self.load_next is None else None
             elif event.type == EventType.FINISHED and cycle is not None:
                 # The detector has already left RUNNING here, so use the last
                 # match directly instead of shown_match.
@@ -441,6 +452,9 @@ class CycleManager(DataUpdateCoordinator[None]):
                 self._matched_start = None
                 if self.load_next is not None:
                     self.history[0]["load_set"] = self.load_next
+                elif self.load_carried is not None:
+                    self.history[0]["load_carried"] = self.load_carried
+                self.load_carried = None
                 self._estimate_last()
                 if event.reason in _LEARNABLE:
                     name = self.learn_name if self.learn_mode else None
@@ -517,6 +531,44 @@ class CycleManager(DataUpdateCoordinator[None]):
         ]
         return estimate_load(heat, points, self.base_share)
 
+    def _washer_load(self) -> float | None:
+        """Load of a washer run that finished shortly before (same laundry)."""
+        if self.appliance != TYPE_DRYER:
+            return None
+        now = time.time()
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            other = getattr(entry, "runtime_data", None)
+            if not isinstance(other, CycleManager) or other.appliance != TYPE_WASHER:
+                continue
+            last = other.last_cycle
+            end = (last or {}).get("end")
+            if not last or end is None or not 0 <= now - end <= CARRY_LOAD_WINDOW_S:
+                continue
+            load = last.get("load_set") if last.get("load_set") is not None else last.get("load")
+            if load is not None:
+                return load
+        return None
+
+    @property
+    def current_load(self) -> tuple[float, str] | None:
+        """Known load of the running cycle: told by the user or taken from the washer."""
+        if self.load_next is not None:
+            return self.load_next, "set"
+        if self.load_carried is not None:
+            return self.load_carried, "washer"
+        return None
+
+    def _sample_loads(self, prof: Any) -> list[tuple[float | None, float]]:
+        """(load, duration_s) of a program's runs; unknown loads estimated from heating."""
+        out: list[tuple[float | None, float]] = []
+        for s in prof.samples:
+            load = s.load
+            if load is None:
+                est = self._estimate(prof.name, heat_wh(s.trace, self.config.bin_s), s.recorded)
+                load = est.load if est else None
+            out.append((load, s.duration_s))
+        return out
+
     @callback
     def _estimate_last(self) -> None:
         last = self.history[0]
@@ -590,6 +642,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             "learn_mode": self.learn_mode,
             "learn_name": self.learn_name,
             "load_next": self.load_next,
+            "load_carried": self.load_carried,
             "phases": self.phases.to_dict(),
             "profiles": self.profiles.to_dict(),
         }
@@ -626,11 +679,15 @@ class CycleManager(DataUpdateCoordinator[None]):
         """How full the drum is (running, once heating is over) or was (last run)."""
         if (cycle := self.current_cycle) is not None:
             match = self.shown_match
+            if (known := self.current_load) is not None:
+                return {
+                    "load": known[0],
+                    "source": known[1],
+                    "program": match.profile.name if match else None,
+                }
             end = heating_end(match.profile.template) if match else None
             if match is None or end is None or match.position <= end + 1:
                 return None
-            if self.load_next is not None:
-                return {"load": self.load_next, "source": "set", "program": match.profile.name}
             heat = heat_wh(cycle.bins, cycle.bin_s)
             est = self._estimate(match.profile.name, heat)
             if est is None:
@@ -698,8 +755,13 @@ class CycleManager(DataUpdateCoordinator[None]):
             tail = predict_remaining(
                 cycle.bins, [tail_bins(s.trace) for s in match.profile.samples], cycle.bin_s
             )
+            elapsed = len(cycle.bins) * cycle.bin_s
             if tail is not None:
-                elapsed = len(cycle.bins) * cycle.bin_s
                 remaining = blend_remaining(remaining, elapsed + tail, elapsed)
+            elif (known := self.current_load) is not None:
+                # Before/without the tail: a known load scales the whole run.
+                total = predict_duration(known[0], self._sample_loads(match.profile))
+                if total is not None:
+                    remaining = blend_remaining(remaining, total, elapsed)
         into_bin = (time.time() - cycle.start) - len(cycle.bins) * cycle.bin_s
         return max(0.0, remaining - max(0.0, into_bin))

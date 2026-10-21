@@ -17,6 +17,7 @@ from .load import (
     heat_wh,
     heating_end,
     heating_over,
+    predict_duration,
     predict_remaining,
     tail_bins,
 )
@@ -57,6 +58,7 @@ __all__ = [
     "heat_wh",
     "heating_end",
     "heating_over",
+    "predict_duration",
     "predict_remaining",
     "tail_bins",
 ]

@@ -75,6 +75,8 @@ EVENT_CLEARED: Final = f"{DOMAIN}_cleared"
 EVENT_LEARNED: Final = f"{DOMAIN}_learned"
 
 TICK_SECONDS: Final = 10
+CARRY_LOAD_WINDOW_S: Final = 3 * 3600
+"""A dryer started within this time after the washer finished takes over its load."""
 NEAR_END_S: Final = 120
 """Quiet time that ends a cycle once a recognised program is at its end."""
 MAX_PAUSE_S: Final = 2700

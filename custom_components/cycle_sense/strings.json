@@ -332,6 +332,17 @@
       "volume": {
         "name": "Volume"
       }
+    },
+    "select": {
+      "load_next": {
+        "name": "Load (current/next cycle)",
+        "state": {
+          "none": "Not set",
+          "low": "Light (about a third)",
+          "half": "Half",
+          "full": "Full"
+        }
+      }
     }
   },
   "exceptions": {

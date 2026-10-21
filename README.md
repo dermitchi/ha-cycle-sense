@@ -42,12 +42,13 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | Power | current watts, always shown (0 W when off) |
 | Running | binary sensor |
 | Program | recognised program (shown from 40 % confidence; attributes: confidence, candidates, learned programs) |
-| Remaining time / Finish time / Progress | from the recognised program; once heating is over, from how long the rest (rinse, spin) usually takes in that program – so a half-full drum that heated less is not shown as running longer |
+| Remaining time / Finish time / Progress | from the recognised program; with a known load (set, or taken over by a dryer from a washer that finished within 3 h) scaled to the program's runs at other loads; once heating is over, from how long the rest (rinse, spin) usually takes in that program – so a half-full drum that heated less is not shown as running longer |
 | Elapsed | minutes since start of the running cycle |
 | Cycle energy | kWh of the running (or last) cycle |
 | Last cycle | end time, with duration / energy / program attributes |
 | Load | how full the drum is/was in % (attribute `level`: low / half / full), estimated from the heating energy compared with calibrated runs of the same program; shown live once the heating phase is over |
 | Phase | washers: washing, pumping, rinsing, final spin, anti-crease/end; dryers: drying, cooling down, anti-crease/end – from the power draw, more precise for a recognised program |
+| Load (current/next cycle) | select: not set / light / half / full – tells how full the drum is; resets after the cycle and calibrates the load estimate |
 | Cycles | total count |
 | Learn mode, Program name (learning), Learn last cycle | program scanning |
 | Acknowledge finished | button |

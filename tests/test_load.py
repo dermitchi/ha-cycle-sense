@@ -7,6 +7,7 @@ from engine import (
     estimate_load,
     heat_wh,
     heating_end,
+    predict_duration,
     predict_remaining,
     tail_bins,
 )
@@ -91,3 +92,20 @@ def test_blend_hands_over_to_shape_match_at_the_end():
     assert blend_remaining(300, 2400, 2400) == 300
     mid = blend_remaining(600, 2400, 2100)
     assert 300 < mid < 600
+
+
+def test_duration_scales_with_load_for_sensor_drying():
+    # Real Schranktrocknen: full drum ~56 min, a third ~18 min.
+    pts = [(1.0, 56 * 60), (0.33, 18 * 60)]
+    half = predict_duration(0.5, pts) / 60
+    assert 25 < half < 30
+    assert predict_duration(0.05, pts) >= 9 * 60
+
+
+def test_duration_needs_two_different_loads():
+    # A timed program run once (or twice with similar loads) must not be scaled.
+    assert predict_duration(1.0, [(0.33, 20 * 60)]) is None
+    assert predict_duration(1.0, [(0.33, 20 * 60), (0.4, 20 * 60)]) is None
+    assert predict_duration(1.0, [(None, 20 * 60), (0.33, 20 * 60)]) is None
+    # Same length at different loads (timed): no positive slope.
+    assert predict_duration(1.0, [(0.2, 20 * 60), (1.0, 20 * 60)]) is None

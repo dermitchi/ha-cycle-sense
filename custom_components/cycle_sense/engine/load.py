@@ -122,6 +122,30 @@ def predict_remaining(trace: Sequence[float], tails: Iterable[int], bin_s: int) 
     return max(0.0, (tail - done) * bin_s)
 
 
+def predict_duration(load: float, points: Iterable[tuple[float | None, float]]) -> float | None:
+    """Run length in s for ``load`` from ``(load, duration_s)`` of runs of one program.
+
+    Sensor-dried laundry is done when it is dry, so the run scales with how
+    much (wet) laundry there is (real Schranktrocknen: full ~56 min, a
+    third ~18 min). Shape matching alone always assumes the template's load.
+    """
+    pts = [(l, d) for l, d in points if l is not None and d > 0]
+    if not pts:
+        return None
+    loads = [l for l, _ in pts]
+    if len(pts) >= 2 and max(loads) - min(loads) >= MIN_SPREAD:
+        n = len(pts)
+        ml = sum(loads) / n
+        md = sum(d for _, d in pts) / n
+        sxx = sum((l - ml) ** 2 for l in loads)
+        slope = sum((l - ml) * (d - md) for l, d in pts) / sxx
+        if slope > 0:
+            return max(min(d for _, d in pts) * 0.5, md + slope * (load - ml))
+    # One run, or loads too close: no way to tell a timed program (same
+    # length whatever the load) from a sensor-controlled one.
+    return None
+
+
 def blend_remaining(shape_s: float, predicted_s: float, elapsed_s: float) -> float:
     """Remaining time: the load-based prediction first, the shape match near the end."""
     model = predicted_s - elapsed_s

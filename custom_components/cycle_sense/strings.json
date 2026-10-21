@@ -255,6 +255,19 @@
             }
           }
         }
+      },
+      "phase": {
+        "name": "Phase",
+        "state": {
+          "off": "Off",
+          "wash": "Washing",
+          "pump": "Pumping",
+          "rinse": "Rinsing",
+          "final_spin": "Final spin",
+          "drying": "Drying",
+          "cooling": "Cooling down",
+          "end": "Anti-crease/End"
+        }
       }
     },
     "switch": {

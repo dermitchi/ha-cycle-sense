@@ -22,6 +22,7 @@ from homeassistant.util import dt as dt_util
 from . import CycleSenseConfigEntry
 from .engine import Phase
 from .engine.load import level
+from .engine.phases import ALL_PHASES
 from .announcer import Announcer
 from .entity import CycleSenseEntity
 from .manager import CycleManager
@@ -186,6 +187,12 @@ SENSORS: tuple[CycleSensorDescription, ...] = (
         attrs_fn=_last_attrs,
     ),
     CycleSensorDescription(
+        key="phase",
+        device_class=SensorDeviceClass.ENUM,
+        options=ALL_PHASES,
+        value_fn=lambda m: m.phases.phase,
+    ),
+    CycleSensorDescription(
         key="load",
         native_unit_of_measurement=PERCENTAGE,
         value_fn=_load,
@@ -209,7 +216,11 @@ async def async_setup_entry(
     if isinstance(runtime, Announcer):
         async_add_entities([LastAnnouncementSensor(runtime, "last_announcement")])
         return
-    async_add_entities(CycleSensor(runtime, d) for d in SENSORS)
+    async_add_entities(
+        CycleSensor(runtime, d)
+        for d in SENSORS
+        if d.key != "phase" or runtime.phases.phase is not None
+    )
 
 
 class CycleSensor(CycleSenseEntity[CycleManager], SensorEntity):

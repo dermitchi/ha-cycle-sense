@@ -47,6 +47,7 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | Cycle energy | kWh of the running (or last) cycle |
 | Last cycle | end time, with duration / energy / program attributes |
 | Load | how full the drum is/was in % (attribute `level`: low / half / full), estimated from the heating energy compared with calibrated runs of the same program; shown live once the heating phase is over |
+| Phase | washers: washing, pumping, rinsing, final spin, anti-crease/end; dryers: drying, cooling down, anti-crease/end – from the power draw, more precise for a recognised program |
 | Cycles | total count |
 | Learn mode, Program name (learning), Learn last cycle | program scanning |
 | Acknowledge finished | button |

@@ -70,6 +70,7 @@ from .engine import (
     tail_bins,
 )
 from .engine.load import BASE_SHARE, DEFAULT_BASE_SHARE
+from .engine.phases import PhaseTracker
 
 if TYPE_CHECKING:
     from . import CycleSenseConfigEntry
@@ -138,6 +139,7 @@ class CycleManager(DataUpdateCoordinator[None]):
         appliance = entry.data.get(CONF_APPLIANCE_TYPE, TYPE_OTHER)
         self.config = DetectorConfig.from_dict({**TYPE_DEFAULTS[appliance], **entry.options})
         self.base_share = BASE_SHARE.get(appliance, DEFAULT_BASE_SHARE)
+        self.phases = PhaseTracker(appliance)
         self.detector = Detector(
             self.config, end_delay_fn=self._end_delay, program_end_fn=self._program_end
         )
@@ -182,6 +184,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             self.matcher.store = self.profiles
             if runtime := data.get("detector"):
                 self.detector.restore(runtime)
+            self.phases.restore(data.get("phases"))
         self._handle(self.detector.handle_restore(time.time(), RESTORE_MAX_GAP_S))
         self._sync_matcher()
 
@@ -216,7 +219,8 @@ class CycleManager(DataUpdateCoordinator[None]):
         ts = state.last_updated.timestamp() if state else time.time()
         before = self.power_w
         self._handle(self.detector.update(ts, _parse_power(state)))
-        if self.power_w != before:
+        phase_changed = self._update_phase(ts)
+        if self.power_w != before or phase_changed:
             self._refresh()
 
     @callback
@@ -229,8 +233,10 @@ class CycleManager(DataUpdateCoordinator[None]):
     def _on_tick(self, _now: datetime) -> None:
         now = time.time()
         self._handle(self.detector.tick(now))
+        phase_changed = self._update_phase(now)
         if (
-            self._sync_matcher()
+            phase_changed
+            or self._sync_matcher()
             or (self.detector.phase == Phase.RUNNING and now - self._last_refresh >= 60)
             or self.anti_crease != self._crease_shown
         ):
@@ -522,6 +528,20 @@ class CycleManager(DataUpdateCoordinator[None]):
         last["load"] = round(est.load, 2) if est else None
         last["load_basis"] = est.basis if est else None
 
+    def _update_phase(self, ts: float) -> bool:
+        """Advance the program phase; True if it changed."""
+        before = self.phases.phase
+        match = self.shown_match
+        progress = match.progress if match and match.confidence >= CONFIDENT else None
+        self.phases.update(
+            ts,
+            self.detector.power or 0.0,
+            self.detector.phase == Phase.RUNNING,
+            self.detector.phase == Phase.FINISHED,
+            progress,
+        )
+        return self.phases.phase != before
+
     @callback
     def _save(self) -> None:
         # async_delay_save restarts its timer on every call, so only call it
@@ -570,6 +590,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             "learn_mode": self.learn_mode,
             "learn_name": self.learn_name,
             "load_next": self.load_next,
+            "phases": self.phases.to_dict(),
             "profiles": self.profiles.to_dict(),
         }
 

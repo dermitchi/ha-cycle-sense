@@ -255,6 +255,19 @@
             }
           }
         }
+      },
+      "phase": {
+        "name": "Phase",
+        "state": {
+          "off": "Aus",
+          "wash": "Waschen",
+          "pump": "Pumpen",
+          "rinse": "Spülen",
+          "final_spin": "Endschleudern",
+          "drying": "Trocknen",
+          "cooling": "Abkühlen",
+          "end": "Knitterschutz/Ende"
+        }
       }
     },
     "switch": {

@@ -47,6 +47,7 @@ from .const import (
     TYPE_OTHER,
 )
 from .engine import (
+    CONFIDENT,
     SHOW_CONFIDENCE,
     CycleRecord,
     Detector,
@@ -61,9 +62,12 @@ from .engine import (
     Phase,
     ProfileStore,
     Sample,
+    blend_remaining,
     estimate_load,
     heat_wh,
     heating_end,
+    predict_remaining,
+    tail_bins,
 )
 from .engine.load import BASE_SHARE, DEFAULT_BASE_SHARE
 
@@ -664,5 +668,17 @@ class CycleManager(DataUpdateCoordinator[None]):
         # Remaining is measured at the last completed bin; subtract the
         # part of the current bin that has already passed.
         cycle = self.current_cycle
+        match = self.shown_match
+        remaining = match.remaining_s
+        if match.confidence >= CONFIDENT:
+            # After heating, what is left (rinse, spin) takes about as long
+            # as in the program's other runs, however full the drum is;
+            # the shape match alone assumes the template's heating time.
+            tail = predict_remaining(
+                cycle.bins, [tail_bins(s.trace) for s in match.profile.samples], cycle.bin_s
+            )
+            if tail is not None:
+                elapsed = len(cycle.bins) * cycle.bin_s
+                remaining = blend_remaining(remaining, elapsed + tail, elapsed)
         into_bin = (time.time() - cycle.start) - len(cycle.bins) * cycle.bin_s
-        return max(0.0, self.shown_match.remaining_s - max(0.0, into_bin))
+        return max(0.0, remaining - max(0.0, into_bin))

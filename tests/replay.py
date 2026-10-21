@@ -13,7 +13,16 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "custom_components" / "cycle_sense"))
-from engine import Detector, DetectorConfig, Matcher, ProfileStore, Sample  # noqa: E402
+from engine import (  # noqa: E402
+    Detector,
+    DetectorConfig,
+    Matcher,
+    ProfileStore,
+    Sample,
+    blend_remaining,
+    predict_remaining,
+    tail_bins,
+)
 
 CFG = {
     "sensor.dartbaord_power": DetectorConfig(end_power=8),
@@ -40,7 +49,13 @@ for ser in json.load(open(sys.argv[1])):
             matcher.push(det.cycle.bins[matcher.n])
             m = matcher.best()
             if m:
-                probes[matcher.n] = (m.profile.name, m.confidence, m.remaining_s)
+                rem = m.remaining_s
+                bins = det.cycle.bins
+                tail = predict_remaining(bins, [tail_bins(x.trace) for x in m.profile.samples], 60)
+                blended = (
+                    rem if tail is None else blend_remaining(rem, len(bins) * 60 + tail, len(bins) * 60)
+                )
+                probes[matcher.n] = (m.profile.name, m.confidence, rem, blended)
 
     def end_delay(quiet_since, now):
         sync()
@@ -65,7 +80,8 @@ for ser in json.load(open(sys.argv[1])):
                 live = ""
                 if half:
                     err = (half[2] - (n - n // 2) * 60) / 60
-                    live = f"| bei 50%: {half[0]} {half[1]:.0%}, Restzeit-Fehler {err:+.0f} min"
+                    err2 = (half[3] - (n - n // 2) * 60) / 60
+                    live = f"| bei 50%: {half[0]} {half[1]:.0%}, Restzeit-Fehler {err:+.0f} min, mit Beladung {err2:+.0f} min"
                 res = store.learn(Sample(c.trace(), c.duration_s, c.energy_wh), auto_name_fmt="Programm {n}")
                 print(f"{fmt(c.start)} {c.duration_s/60:4.0f} min, Meldung +{(e.ts-c.end)/60:.1f} min → {res.profile or '-'} {live}")
         sync()

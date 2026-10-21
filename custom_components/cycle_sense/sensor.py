@@ -75,7 +75,11 @@ def _finish_time(m: CycleManager) -> datetime | None:
 
 
 def _progress(m: CycleManager) -> int | None:
-    return round(m.shown_match.progress * 100) if m.shown_match else None
+    rem, cycle = m.remaining_s, m.current_cycle
+    if rem is None or cycle is None:
+        return None
+    elapsed = time.time() - cycle.start
+    return min(100, round(elapsed / max(1.0, elapsed + rem) * 100))
 
 
 def _status_attrs(m: CycleManager) -> dict[str, Any]:

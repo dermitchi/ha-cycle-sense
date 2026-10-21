@@ -16,7 +16,11 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_APPLIANCE_TYPE,
     CONF_REMINDERS,
+    DEFAULT_TEXT_DRYER_FREE,
+    TYPE_DRYER,
+    TYPE_WASHER,
     DEFAULT_REMINDERS,
     DEFAULT_TEXT_REMINDER,
     CHIME_NONE,
@@ -60,6 +64,16 @@ def render(template: str, values: dict[str, str]) -> str:
     return " ".join(text.split())
 
 
+def join_sentences(first: str, second: str) -> str:
+    """Append a sentence, adding a full stop to the first one if missing."""
+    first, second = first.strip(), second.strip()
+    if not first or not second:
+        return first or second
+    if first[-1] not in ".!?":
+        first += "."
+    return f"{first} {second}"
+
+
 def _duration_text(minutes: int) -> str:
     """German duration for speech, e.g. 60 -> "einer Stunde", 90 -> "90 Minuten"."""
     if minutes % 60:
@@ -99,6 +113,7 @@ class Announcer(DataUpdateCoordinator[None]):
         self.texts_finished: dict[str, str] = {}
         self.text_started = ""
         self.text_reminder = DEFAULT_TEXT_REMINDER
+        self.text_dryer_free = DEFAULT_TEXT_DRYER_FREE
         self.volume = DEFAULT_VOLUME
         self.last_text: str | None = None
         self.last_time: datetime | None = None
@@ -121,6 +136,7 @@ class Announcer(DataUpdateCoordinator[None]):
             self.texts_finished = data.get("texts_finished", {})
             self.text_started = data.get("text_started", "")
             self.text_reminder = data.get("text_reminder", DEFAULT_TEXT_REMINDER)
+            self.text_dryer_free = data.get("text_dryer_free", DEFAULT_TEXT_DRYER_FREE)
             self.volume = data.get("volume", DEFAULT_VOLUME)
         entry = self.config_entry
         entry.async_on_unload(self.hass.bus.async_listen(EVENT_FINISHED, self._on_finished))
@@ -143,6 +159,7 @@ class Announcer(DataUpdateCoordinator[None]):
             "texts_finished": self.texts_finished,
             "text_started": self.text_started,
             "text_reminder": self.text_reminder,
+            "text_dryer_free": self.text_dryer_free,
             "volume": self.volume,
         }
 
@@ -152,8 +169,27 @@ class Announcer(DataUpdateCoordinator[None]):
     def _on_finished(self, event: Event) -> None:
         if event.data.get("reason") not in ("quiet", "program_end"):
             return
-        self._schedule(self.finished_text(event.data.get("entry_id")), event.data)
+        entry_id = event.data.get("entry_id")
+        text = self.finished_text(entry_id)
+        if self.text_dryer_free.strip() and self.dryer_free_after(entry_id):
+            text = join_sentences(text, self.text_dryer_free)
+        self._schedule(text, event.data)
         self._plan_reminders(dict(event.data))
+
+    def dryer_free_after(self, appliance_entry_id: str | None) -> bool:
+        """True if a washer finished and every dryer is free (not running, not waiting)."""
+        entry = self.hass.config_entries.async_get_entry(appliance_entry_id or "")
+        if entry is None or entry.data.get(CONF_APPLIANCE_TYPE) != TYPE_WASHER:
+            return False
+        dryers = [
+            getattr(e, "runtime_data", None)
+            for e in self.hass.config_entries.async_entries(DOMAIN)
+            if e.data.get(CONF_APPLIANCE_TYPE) == TYPE_DRYER
+        ]
+        detectors = [getattr(m, "detector", None) for m in dryers]
+        return bool(detectors) and all(
+            det is not None and det.available and det.phase == "off" for det in detectors
+        )
 
     def reminder_minutes(self) -> list[int]:
         """Configured reminder delays in minutes, e.g. "60, 120"."""

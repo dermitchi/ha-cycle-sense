@@ -31,6 +31,7 @@ async def async_setup_entry(
             + [
                 AnnouncerText(runtime, "text_reminder", "text_reminder"),
                 AnnouncerText(runtime, "text_started", "text_started"),
+                AnnouncerText(runtime, "text_dryer_free", "text_dryer_free"),
             ]
         )
     else:

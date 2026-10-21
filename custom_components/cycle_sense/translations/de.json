@@ -305,6 +305,14 @@
             "name": "Variablen"
           }
         }
+      },
+      "text_dryer_free": {
+        "name": "Text Trockner frei (Zusatz bei Waschmaschine fertig, leer = aus)",
+        "state_attributes": {
+          "variables": {
+            "name": "Variablen"
+          }
+        }
       }
     },
     "number": {

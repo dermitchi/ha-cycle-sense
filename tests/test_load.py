@@ -1,6 +1,15 @@
 """Load estimate from heating energy."""
 
-from engine import ProfileStore, Sample, estimate_load, heat_wh, heating_end
+from engine import (
+    ProfileStore,
+    Sample,
+    blend_remaining,
+    estimate_load,
+    heat_wh,
+    heating_end,
+    predict_remaining,
+    tail_bins,
+)
 from engine.load import level
 
 
@@ -59,3 +68,26 @@ def test_load_label_is_stored_and_found():
     old = sample.to_dict()
     del old["load"]
     assert Sample.from_dict(old).load is None
+
+
+def test_remaining_from_program_tail():
+    # Template: 13 min heating, then 35 min rinse/spin.
+    full = [2000.0] * 13 + [100.0] * 35
+    assert tail_bins(full) == 35
+    # Small load: heating over after 6 min, 4 quiet bins seen so far.
+    small = [2000.0] * 6 + [100.0] * 4
+    assert predict_remaining(small, [35], 60) == 31 * 60
+    # Still heating (or just stopped): no prediction yet.
+    assert predict_remaining([2000.0] * 6 + [100.0], [35], 60) is None
+    assert predict_remaining(small, [], 60) is None
+    # Median of the program's tails.
+    assert predict_remaining(small, [30, 35, 50], 60) == 31 * 60
+
+
+def test_blend_hands_over_to_shape_match_at_the_end():
+    # Early: prediction wins.
+    assert blend_remaining(3000, 2400, 600) == 1800
+    # At the predicted end the shape match takes over completely.
+    assert blend_remaining(300, 2400, 2400) == 300
+    mid = blend_remaining(600, 2400, 2100)
+    assert 300 < mid < 600

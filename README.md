@@ -42,7 +42,7 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | Power | current watts, always shown (0 W when off) |
 | Running | binary sensor |
 | Program | recognised program (shown from 40 % confidence; attributes: confidence, candidates, learned programs) |
-| Remaining time / Finish time / Progress | from the recognised program |
+| Remaining time / Finish time / Progress | from the recognised program; once heating is over, from how long the rest (rinse, spin) usually takes in that program – so a half-full drum that heated less is not shown as running longer |
 | Elapsed | minutes since start of the running cycle |
 | Cycle energy | kWh of the running (or last) cycle |
 | Last cycle | end time, with duration / energy / program attributes |
@@ -85,6 +85,8 @@ actions:
 Add **Cycle Sense → Spoken announcements** once to get an extra device that speaks on your smart speakers (e.g. HomePods via the Apple TV integration) when an appliance finishes. Choose speakers, TTS voice, a sound played right before the voice (via Chime TTS), quiet hours and (optionally) people who must be home. On the device you get: *Announcements* on/off, *Text when finished*, *Text when started* (empty = off), *Volume* (restored afterwards), *Test announcement* and *Last announcement*.
 
 Texts support placeholders: `{geraet}` (appliance), `{programm}` (recognised program), `{dauer}` (minutes), `{energie}` (kWh), `{uhrzeit}` (time). Example: `{geraet} ist fertig – {programm}, {dauer} Minuten.`
+
+When a washer finishes and every dryer is free (not running, not waiting to be emptied), the text *Dryer free* is added, e.g. "The washer is finished. The dryer is free and can be loaded right away." Leave it empty to turn it off.
 
 ## Kurzanleitung (Deutsch)
 

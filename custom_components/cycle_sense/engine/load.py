@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from statistics import median
 
 HEAT_BASE_W = 300.0
 """Power drawn by motor/drum; everything above counts as heating."""
@@ -28,6 +29,10 @@ MIN_SPREAD = 0.2
 MIN_LOAD = 0.05
 MAX_LOAD = 1.0
 LEVELS = ((0.45, "low"), (0.8, "half"), (2.0, "full"))
+SETTLED_BINS = 3
+"""Bins without heating before the heating phase counts as over."""
+MODEL_TRUST_UNTIL = 0.75
+"""Fraction of the predicted run after which the shape match takes over."""
 
 
 def heat_wh(trace: Sequence[float], bin_s: int) -> float:
@@ -88,3 +93,40 @@ def estimate(
 
 def _clamp(value: float) -> float:
     return min(MAX_LOAD, max(MIN_LOAD, value))
+
+
+def heating_over(trace: Sequence[float]) -> bool:
+    """True once the run has heated and then not heated for a few bins."""
+    end = heating_end(trace)
+    return end is not None and len(trace) - 1 - end >= SETTLED_BINS
+
+
+def tail_bins(trace: Sequence[float]) -> int | None:
+    """Bins after the last heating bin (rinsing, spinning, cooling down)."""
+    end = heating_end(trace)
+    return None if end is None else len(trace) - 1 - end
+
+
+def predict_remaining(trace: Sequence[float], tails: Iterable[int], bin_s: int) -> float | None:
+    """Remaining seconds once heating is over, from the program's usual tail.
+
+    Less laundry shortens the heating, while what follows the last heating
+    (rinse, spin) takes about the same time in every run of a program
+    (real Pflegeleicht 40° runs: 59 / 45 min long, tails 35 / 38 min).
+    """
+    known = [t for t in tails if t is not None]
+    if not known or not heating_over(trace):
+        return None
+    tail = median(known)
+    done = tail_bins(trace) or 0
+    return max(0.0, (tail - done) * bin_s)
+
+
+def blend_remaining(shape_s: float, predicted_s: float, elapsed_s: float) -> float:
+    """Remaining time: the load-based prediction first, the shape match near the end."""
+    model = predicted_s - elapsed_s
+    if model <= 0:
+        return shape_s
+    start = MODEL_TRUST_UNTIL * predicted_s
+    weight = 1.0 if elapsed_s <= start else max(0.0, model / (predicted_s - start))
+    return weight * model + (1 - weight) * shape_s

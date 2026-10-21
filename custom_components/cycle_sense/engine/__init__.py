@@ -10,8 +10,18 @@ from .detector import (
     Phase,
 )
 from .dtw import StreamingDTW, dtw_distance, feature, features
-from .load import LoadEstimate, estimate as estimate_load, heat_wh, heating_end
+from .load import (
+    LoadEstimate,
+    blend_remaining,
+    estimate as estimate_load,
+    heat_wh,
+    heating_end,
+    heating_over,
+    predict_remaining,
+    tail_bins,
+)
 from .profiles import (
+    CONFIDENT,
     SHOW_CONFIDENCE,
     LearnResult,
     Match,
@@ -22,6 +32,7 @@ from .profiles import (
 )
 
 __all__ = [
+    "CONFIDENT",
     "SHOW_CONFIDENCE",
     "CycleRecord",
     "Detector",
@@ -38,10 +49,14 @@ __all__ = [
     "ProfileStore",
     "Sample",
     "StreamingDTW",
+    "blend_remaining",
     "dtw_distance",
     "estimate_load",
     "feature",
     "features",
     "heat_wh",
     "heating_end",
+    "heating_over",
+    "predict_remaining",
+    "tail_bins",
 ]

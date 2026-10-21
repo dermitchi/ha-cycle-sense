@@ -24,6 +24,7 @@ CHIME_NONE: Final = "none"
 CHIMES: Final = [CHIME_NONE, "airport", "classical", "doorbell", "bright", "bells", "bells_2", "chord", "chirp", "ding_dong", "glockenspiel", "marimba"]
 DEFAULT_CHIME: Final = "airport"
 DEFAULT_TEXT_FINISHED: Final = "{geraet} ist fertig."
+DEFAULT_TEXT_DRYER_FREE: Final = "Der Trockner ist frei und kann direkt befüllt werden."
 DEFAULT_TEXT_REMINDER: Final = "Erinnerung: {geraet} ist seit {seit} fertig und wartet aufs Ausräumen."
 CONF_REMINDERS: Final = "reminders"
 DEFAULT_REMINDERS: Final = "60, 120"

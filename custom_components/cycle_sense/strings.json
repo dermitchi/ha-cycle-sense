@@ -135,6 +135,12 @@
         "classical": "Classical",
         "doorbell": "Doorbell"
       }
+    },
+    "load_target": {
+      "options": {
+        "last": "Last cycle",
+        "next": "Next cycle"
+      }
     }
   },
   "entity": {
@@ -236,6 +242,19 @@
       },
       "power": {
         "name": "Power"
+      },
+      "load": {
+        "name": "Load",
+        "state_attributes": {
+          "level": {
+            "name": "Level",
+            "state": {
+              "low": "Light",
+              "half": "Half",
+              "full": "Full"
+            }
+          }
+        }
       }
     },
     "switch": {
@@ -383,6 +402,24 @@
         "config_entry_id": {
           "name": "Appliance",
           "description": "The Cycle Sense appliance."
+        }
+      }
+    },
+    "set_load": {
+      "name": "Set load",
+      "description": "Tells how full the drum was (last cycle) or will be (next cycle). Used to calibrate the load estimate.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "load": {
+          "name": "Load",
+          "description": "How full the drum is, in percent of a full load."
+        },
+        "target": {
+          "name": "Cycle",
+          "description": "Last finished cycle or the next one."
         }
       }
     }

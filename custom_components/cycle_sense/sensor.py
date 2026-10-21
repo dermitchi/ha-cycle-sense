@@ -21,6 +21,7 @@ from homeassistant.util import dt as dt_util
 
 from . import CycleSenseConfigEntry
 from .engine import Phase
+from .engine.load import level
 from .announcer import Announcer
 from .entity import CycleSenseEntity
 from .manager import CycleManager
@@ -101,6 +102,21 @@ def _last_attrs(m: CycleManager) -> dict[str, Any]:
     }
 
 
+def _load(m: CycleManager) -> int | None:
+    info = m.load_info
+    return None if info is None else round(info["load"] * 100)
+
+
+def _load_attrs(m: CycleManager) -> dict[str, Any]:
+    info = m.load_info
+    if info is None:
+        return {"next_set": round(m.load_next * 100) if m.load_next is not None else None}
+    return {k: v for k, v in info.items() if k != "load"} | {
+        "level": level(info["load"]),
+        "next_set": round(m.load_next * 100) if m.load_next is not None else None,
+    }
+
+
 @dataclass(frozen=True, kw_only=True)
 class CycleSensorDescription(SensorEntityDescription):
     """Describes a Cycle Sense sensor."""
@@ -164,6 +180,12 @@ SENSORS: tuple[CycleSensorDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=_last_end,
         attrs_fn=_last_attrs,
+    ),
+    CycleSensorDescription(
+        key="load",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=_load,
+        attrs_fn=_load_attrs,
     ),
     CycleSensorDescription(
         key="cycle_count",

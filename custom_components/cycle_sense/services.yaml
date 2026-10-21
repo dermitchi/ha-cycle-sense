@@ -47,6 +47,30 @@ delete_program:
       selector:
         text:
 
+set_load:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: cycle_sense
+    load:
+      required: true
+      example: 33
+      selector:
+        number:
+          min: 5
+          max: 100
+          unit_of_measurement: "%"
+    target:
+      default: last
+      selector:
+        select:
+          translation_key: load_target
+          options:
+            - last
+            - next
+
 import_history:
   fields:
     config_entry_id:

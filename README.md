@@ -46,6 +46,7 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | Elapsed | minutes since start of the running cycle |
 | Cycle energy | kWh of the running (or last) cycle |
 | Last cycle | end time, with duration / energy / program attributes |
+| Load | how full the drum is/was in % (attribute `level`: low / half / full), estimated from the heating energy compared with calibrated runs of the same program; shown live once the heating phase is over |
 | Cycles | total count |
 | Learn mode, Program name (learning), Learn last cycle | program scanning |
 | Acknowledge finished | button |
@@ -57,6 +58,7 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | `cycle_sense.learn_last_cycle` | save the last finished cycle as a recording of a program |
 | `cycle_sense.rename_program` | rename a program (renaming to an existing name merges them) |
 | `cycle_sense.delete_program` | delete a program |
+| `cycle_sense.set_load` | tell how full the drum was (`target: last`) or will be (`next`), in % – calibrates the load estimate per program |
 | `cycle_sense.import_history` | learn from cycles in the recorder history (returns a summary) |
 
 ## Events

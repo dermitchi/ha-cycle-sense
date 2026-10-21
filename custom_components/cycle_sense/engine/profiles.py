@@ -54,6 +54,8 @@ class Sample:
     energy_wh: float
     recorded: float = field(default_factory=time.time)
     source: str = "auto"
+    load: float | None = None
+    """How full the drum was (0..1) as told by the user, for load calibration."""
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize."""
@@ -63,6 +65,7 @@ class Sample:
             "energy_wh": self.energy_wh,
             "recorded": self.recorded,
             "source": self.source,
+            "load": self.load,
         }
 
     @classmethod
@@ -184,6 +187,13 @@ class ProfileStore:
         """Find a profile by name (case-insensitive)."""
         key = name.strip().casefold()
         return next((p for p in self.profiles if p.name.casefold() == key), None)
+
+    def find_sample(self, recorded: float) -> Sample | None:
+        """The stored run that started at ``recorded``, wherever it is."""
+        for sample in [*self.unassigned, *(s for p in self.profiles for s in p.samples)]:
+            if abs(sample.recorded - recorded) < 1:
+                return sample
+        return None
 
     def names(self) -> list[str]:
         """Profile names."""

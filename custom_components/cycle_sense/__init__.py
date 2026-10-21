@@ -50,6 +50,13 @@ SCHEMAS = {
     ),
     "delete_program": vol.Schema({_ENTRY: cv.string, vol.Required("program"): _NAME}),
     "clear_unassigned": vol.Schema({_ENTRY: cv.string}),
+    "set_load": vol.Schema(
+        {
+            _ENTRY: cv.string,
+            vol.Required("load"): vol.All(vol.Coerce(float), vol.Range(min=5, max=100)),
+            vol.Optional("target", default="last"): vol.In(["last", "next"]),
+        }
+    ),
     "import_history": vol.Schema(
         {_ENTRY: cv.string, vol.Optional("days", default=10): vol.All(int, vol.Range(1, 60))}
     ),
@@ -95,6 +102,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def clear_unassigned(call: ServiceCall) -> ServiceResponse:
         return {"removed": await _manager(hass, call).async_clear_unassigned()}
 
+    async def set_load(call: ServiceCall) -> None:
+        try:
+            _manager(hass, call).async_set_load(call.data["load"] / 100, call.data["target"])
+        except ValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key=str(err)
+            ) from err
+
     async def import_history(call: ServiceCall) -> ServiceResponse:
         return await _manager(hass, call).async_import_history(call.data["days"])
 
@@ -108,6 +123,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         DOMAIN, "clear_unassigned", clear_unassigned, SCHEMAS["clear_unassigned"],
         supports_response=SupportsResponse.OPTIONAL,
     )
+    hass.services.async_register(DOMAIN, "set_load", set_load, SCHEMAS["set_load"])
     hass.services.async_register(
         DOMAIN, "import_history", import_history, SCHEMAS["import_history"],
         supports_response=SupportsResponse.OPTIONAL,

@@ -10,6 +10,7 @@ from .detector import (
     Phase,
 )
 from .dtw import StreamingDTW, dtw_distance, feature, features
+from .load import LoadEstimate, estimate as estimate_load, heat_wh, heating_end
 from .profiles import (
     SHOW_CONFIDENCE,
     LearnResult,
@@ -29,6 +30,7 @@ __all__ = [
     "EventType",
     "FinishReason",
     "LearnResult",
+    "LoadEstimate",
     "Match",
     "Matcher",
     "Phase",
@@ -37,6 +39,9 @@ __all__ = [
     "Sample",
     "StreamingDTW",
     "dtw_distance",
+    "estimate_load",
     "feature",
     "features",
+    "heat_wh",
+    "heating_end",
 ]

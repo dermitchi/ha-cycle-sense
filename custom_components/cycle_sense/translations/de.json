@@ -135,6 +135,12 @@
         "classical": "Classical",
         "doorbell": "Doorbell"
       }
+    },
+    "load_target": {
+      "options": {
+        "last": "Letzter Lauf",
+        "next": "Nächster Lauf"
+      }
     }
   },
   "entity": {
@@ -236,6 +242,19 @@
       },
       "power": {
         "name": "Leistung"
+      },
+      "load": {
+        "name": "Beladung",
+        "state_attributes": {
+          "level": {
+            "name": "Stufe",
+            "state": {
+              "low": "Wenig",
+              "half": "Halb voll",
+              "full": "Voll"
+            }
+          }
+        }
       }
     },
     "switch": {
@@ -383,6 +402,24 @@
         "config_entry_id": {
           "name": "Gerät",
           "description": "Das Cycle-Sense-Gerät."
+        }
+      }
+    },
+    "set_load": {
+      "name": "Beladung angeben",
+      "description": "Sagt, wie voll die Trommel war (letzter Lauf) oder sein wird (nächster Lauf). Damit lernt die Beladungs-Schätzung.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "load": {
+          "name": "Beladung",
+          "description": "Wie voll die Trommel ist, in Prozent einer vollen Ladung."
+        },
+        "target": {
+          "name": "Lauf",
+          "description": "Letzter fertiger Lauf oder der nächste."
         }
       }
     }

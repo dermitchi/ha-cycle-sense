@@ -55,12 +55,17 @@ from .engine import (
     EventType,
     FinishReason,
     LearnResult,
+    LoadEstimate,
     Match,
     Matcher,
     Phase,
     ProfileStore,
     Sample,
+    estimate_load,
+    heat_wh,
+    heating_end,
 )
+from .engine.load import BASE_SHARE, DEFAULT_BASE_SHARE
 
 if TYPE_CHECKING:
     from . import CycleSenseConfigEntry
@@ -128,6 +133,7 @@ class CycleManager(DataUpdateCoordinator[None]):
         super().__init__(hass, _LOGGER, config_entry=entry, name=entry.title)
         appliance = entry.data.get(CONF_APPLIANCE_TYPE, TYPE_OTHER)
         self.config = DetectorConfig.from_dict({**TYPE_DEFAULTS[appliance], **entry.options})
+        self.base_share = BASE_SHARE.get(appliance, DEFAULT_BASE_SHARE)
         self.detector = Detector(
             self.config, end_delay_fn=self._end_delay, program_end_fn=self._program_end
         )
@@ -139,6 +145,7 @@ class CycleManager(DataUpdateCoordinator[None]):
         self.cycle_count = 0
         self.learn_mode = False
         self.learn_name = ""
+        self.load_next: float | None = None
         self.match: Match | None = None
         self._matched_start: float | None = None
         self._store: Store[dict[str, Any]] = Store(
@@ -164,6 +171,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             self.cycle_count = data.get("cycle_count", 0)
             self.learn_mode = data.get("learn_mode", False)
             self.learn_name = data.get("learn_name", "")
+            self.load_next = data.get("load_next")
             self.profiles = await self.hass.async_add_executor_job(
                 ProfileStore.from_dict, data.get("profiles")
             )
@@ -264,6 +272,21 @@ class CycleManager(DataUpdateCoordinator[None]):
         if cycle is None or not cycle.bins:
             raise ValueError("no_cycle")
         return await self._async_learn(_sample(cycle, "learn", minutes), name)
+
+    @callback
+    def async_set_load(self, load: float, target: str = "last") -> None:
+        """Tell how full the drum was (last run) or will be (next run), 0..1."""
+        if target == "next":
+            self.load_next = load
+        else:
+            if not self.history:
+                raise ValueError("no_cycle")
+            last = self.history[0]
+            last["load_set"] = load
+            if (sample := self.profiles.find_sample(last["start"])) is not None:
+                sample.load = load
+        self._refresh()
+        self._save()
 
     async def async_clear_unassigned(self) -> int:
         """Forget recorded runs that belong to no program."""
@@ -406,17 +429,19 @@ class CycleManager(DataUpdateCoordinator[None]):
                 del self.history[HISTORY_SIZE:]
                 self.match = None
                 self._matched_start = None
+                if self.load_next is not None:
+                    self.history[0]["load_set"] = self.load_next
+                self._estimate_last()
                 if event.reason in _LEARNABLE:
                     name = self.learn_name if self.learn_mode else None
+                    sample = _sample(cycle, "learn" if name else "auto")
+                    sample.load = self.load_next
                     self.config_entry.async_create_background_task(
                         self.hass,
-                        self._async_learn(
-                            _sample(cycle, "learn" if name else "auto"),
-                            name,
-                            from_learn_mode=name is not None,
-                        ),
+                        self._async_learn(sample, name, from_learn_mode=name is not None),
                         f"{DOMAIN}_learn",
                     )
+                self.load_next = None
             _LOGGER.debug("%s: %s (%s)", self.name, event.type, event.reason)
             self.hass.bus.async_fire(_EVENT_NAMES[event.type], data)
         if events:
@@ -435,6 +460,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             self.learn_mode = False
         if self.history and result.profile and abs(self.history[0]["start"] - sample.recorded) < 1:
             self.history[0]["program"] = result.profile
+            self._estimate_last()
         if name or result.created:
             prof = self.profiles.get(result.profile) if result.profile else None
             count = len(prof.samples) if prof else 0
@@ -467,6 +493,31 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._after_profiles_changed()
         return result
 
+    def _estimate(
+        self, program: str | None, heat: float, exclude: float | None = None
+    ) -> LoadEstimate | None:
+        """Load of a run of ``program`` with ``heat`` Wh, from calibrated runs."""
+        prof = self.profiles.get(program) if program else None
+        if prof is None:
+            return None
+        points = [
+            (s.load, heat_wh(s.trace, self.config.bin_s))
+            for s in prof.samples
+            if s.load is not None and (exclude is None or abs(s.recorded - exclude) >= 1)
+        ]
+        return estimate_load(heat, points, self.base_share)
+
+    @callback
+    def _estimate_last(self) -> None:
+        last = self.history[0]
+        est = (
+            self._estimate(last.get("program"), last["heat_wh"], last["start"])
+            if "heat_wh" in last
+            else None
+        )
+        last["load"] = round(est.load, 2) if est else None
+        last["load_basis"] = est.basis if est else None
+
     @callback
     def _save(self) -> None:
         # async_delay_save restarts its timer on every call, so only call it
@@ -489,6 +540,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             "energy_kwh": round(cycle.energy_wh / 1000, 3),
             "peak_w": round(cycle.peak_w),
             "reason": cycle.reason,
+            "heat_wh": round(heat_wh(cycle.trace(), cycle.bin_s)),
         }
 
     def _event_data(self, event: DetectorEvent) -> dict[str, Any]:
@@ -513,6 +565,7 @@ class CycleManager(DataUpdateCoordinator[None]):
             "cycle_count": self.cycle_count,
             "learn_mode": self.learn_mode,
             "learn_name": self.learn_name,
+            "load_next": self.load_next,
             "profiles": self.profiles.to_dict(),
         }
 
@@ -542,6 +595,43 @@ class CycleManager(DataUpdateCoordinator[None]):
         if det.phase != Phase.FINISHED or det.motion_at is None:
             return False
         return time.time() - det.motion_at < _CREASE_WINDOW_S
+
+    @property
+    def load_info(self) -> dict[str, Any] | None:
+        """How full the drum is (running, once heating is over) or was (last run)."""
+        if (cycle := self.current_cycle) is not None:
+            match = self.shown_match
+            end = heating_end(match.profile.template) if match else None
+            if match is None or end is None or match.position <= end + 1:
+                return None
+            if self.load_next is not None:
+                return {"load": self.load_next, "source": "set", "program": match.profile.name}
+            heat = heat_wh(cycle.bins, cycle.bin_s)
+            est = self._estimate(match.profile.name, heat)
+            if est is None:
+                return None
+            return {
+                "load": est.load,
+                "source": "live",
+                "basis": est.basis,
+                "calibrations": est.points,
+                "heat_wh": round(heat),
+                "program": match.profile.name,
+            }
+        last = self.last_cycle
+        if not last:
+            return None
+        if last.get("load_set") is not None:
+            return {"load": last["load_set"], "source": "set", "program": last.get("program")}
+        if last.get("load") is None:
+            return None
+        return {
+            "load": last["load"],
+            "source": "estimate",
+            "basis": last.get("load_basis"),
+            "heat_wh": last.get("heat_wh"),
+            "program": last.get("program"),
+        }
 
     @property
     def last_cycle(self) -> dict[str, Any] | None:

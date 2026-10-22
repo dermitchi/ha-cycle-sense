@@ -38,7 +38,10 @@ class LearnModeSwitch(CycleSenseEntity[CycleManager], SwitchEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Show which program will be recorded."""
-        return {"program_name": self.coordinator.learn_name or None}
+        return {
+            "program_name": self.coordinator.learn_name or None,
+            "new_program": self.coordinator.learning_new_program,
+        }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Start scanning."""

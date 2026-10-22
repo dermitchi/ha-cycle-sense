@@ -99,6 +99,11 @@
       "volume": {
         "default": "mdi:volume-high"
       }
+    },
+    "select": {
+      "program_next": {
+        "default": "mdi:format-list-bulleted"
+      }
     }
   },
   "services": {

@@ -49,8 +49,11 @@ class LearnNameText(CycleSenseEntity[CycleManager], TextEntity):
         return self.coordinator.learn_name
 
     async def async_set_value(self, value: str) -> None:
-        """Set the name."""
-        self.coordinator.async_set_learn_name(value)
+        """Set the name; a name starts recording the running/next cycle under it."""
+        if value.strip():
+            self.coordinator.async_choose_program(value)
+        else:
+            self.coordinator.async_set_learn_name(value)
 
 
 class AnnouncerText(CycleSenseEntity[Announcer], TextEntity):

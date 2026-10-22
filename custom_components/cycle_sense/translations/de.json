@@ -342,6 +342,12 @@
           "half": "Halb voll",
           "full": "Voll"
         }
+      },
+      "program_next": {
+        "name": "Programm (laufender/nächster Lauf)",
+        "state": {
+          "auto": "Automatisch erkennen"
+        }
       }
     }
   },

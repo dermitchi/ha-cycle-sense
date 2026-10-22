@@ -1,4 +1,4 @@
-"""How full the drum will be on the next cycle."""
+"""Load and program of the running/next cycle."""
 
 from __future__ import annotations
 
@@ -21,7 +21,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up the select (appliances only)."""
     if isinstance(entry.runtime_data, CycleManager):
-        async_add_entities([NextLoadSelect(entry.runtime_data, "load_next")])
+        async_add_entities(
+            [
+                NextLoadSelect(entry.runtime_data, "load_next"),
+                ProgramSelect(entry.runtime_data, "program_next"),
+            ]
+        )
 
 
 class NextLoadSelect(CycleSenseEntity[CycleManager], SelectEntity):
@@ -43,3 +48,32 @@ class NextLoadSelect(CycleSenseEntity[CycleManager], SelectEntity):
             self.coordinator.async_set_load(0, "clear")
         else:
             self.coordinator.async_set_load(LOADS[option], "next")
+
+
+AUTO = "auto"
+
+
+class ProgramSelect(CycleSenseEntity[CycleManager], SelectEntity):
+    """Program of the running/next cycle, picked from the learned ones.
+
+    A new program is started by typing its name into the learn-name text.
+    """
+
+    @property
+    def options(self) -> list[str]:
+        """Automatic plus every learned program (and a new one being learned)."""
+        names = self.coordinator.program_names
+        if self.coordinator.learning_new_program:
+            names.append(self.coordinator.learn_name)
+        return [AUTO, *names]
+
+    @property
+    def current_option(self) -> str:
+        """The chosen program, or automatic recognition."""
+        if self.coordinator.learn_mode and self.coordinator.learn_name:
+            return self.coordinator.learn_name
+        return AUTO
+
+    async def async_select_option(self, option: str) -> None:
+        """Choose a program or go back to automatic recognition."""
+        self.coordinator.async_choose_program(None if option == AUTO else option)

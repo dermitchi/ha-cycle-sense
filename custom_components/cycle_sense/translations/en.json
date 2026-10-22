@@ -342,6 +342,12 @@
           "half": "Half",
           "full": "Full"
         }
+      },
+      "program_next": {
+        "name": "Program (running/next cycle)",
+        "state": {
+          "auto": "Recognise automatically"
+        }
       }
     }
   },

@@ -269,6 +269,27 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._refresh()
         self._save()
 
+    @callback
+    def async_choose_program(self, name: str | None) -> None:
+        """Tell which program the running/next cycle is (None: recognise it).
+
+        This is the learn mode with a given name: the run is pinned to the
+        program and stored under it, a new name creates the program.
+        """
+        if name:
+            self.learn_name = name.strip()
+        self.async_set_learn_mode(bool(name))
+
+    @property
+    def program_names(self) -> list[str]:
+        """Names of all learned programs, sorted."""
+        return sorted((p.name for p in self.profiles.profiles), key=str.casefold)
+
+    @property
+    def learning_new_program(self) -> bool:
+        """Learn mode is on for a program that does not exist yet."""
+        return self.learn_mode and self.profiles.get(self.learn_name) is None
+
     async def async_learn_last(
         self, name: str | None = None, minutes: float | None = None
     ) -> LearnResult:
@@ -393,7 +414,8 @@ class CycleManager(DataUpdateCoordinator[None]):
         return self.matcher.end_delay(self.config.end_delay_s, NEAR_END_S, MAX_PAUSE_S)
 
     def _program_end(self, now: float) -> bool:
-        if self.learn_mode:
+        # A new program has no learned end yet; a chosen known one has.
+        if self.learning_new_program:
             return False
         self._sync_matcher()
         return self.matcher.program_end_reached()
@@ -499,7 +521,9 @@ class CycleManager(DataUpdateCoordinator[None]):
         if self.history and result.profile and abs(self.history[0]["start"] - sample.recorded) < 1:
             self.history[0]["program"] = result.profile
             self._estimate_last()
-        if name or result.created:
+        # Choosing a known program is routine; only new programs and manual
+        # learning get a notification.
+        if result.created or (name and not from_learn_mode):
             prof = self.profiles.get(result.profile) if result.profile else None
             count = len(prof.samples) if prof else 0
             title = self.config_entry.title

@@ -342,6 +342,12 @@
           "half": "Half",
           "full": "Full"
         }
+      },
+      "program_next": {
+        "name": "Program (running/next cycle)",
+        "state": {
+          "auto": "Recognise automatically"
+        }
       }
     }
   },
@@ -360,6 +366,9 @@
     },
     "announce_failed": {
       "message": "Announcement failed – check speakers and voice."
+    },
+    "no_recording": {
+      "message": "No stored run found at this start time."
     }
   },
   "services": {
@@ -452,6 +461,24 @@
         "target": {
           "name": "Cycle",
           "description": "Last finished cycle or the next one."
+        }
+      }
+    },
+    "move_recording": {
+      "name": "Move recording",
+      "description": "Assigns a stored run to another (or new) program, e.g. when it was recognised wrongly.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Start time of the run (±3 minutes)."
+        },
+        "program": {
+          "name": "Program",
+          "description": "Correct program."
         }
       }
     }

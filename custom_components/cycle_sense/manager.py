@@ -28,7 +28,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CARRY_LOAD_WINDOW_S,
     CONF_APPLIANCE_TYPE,
     CONF_DOOR_SENSOR,
     CONF_POWER_SENSOR,
@@ -45,9 +44,7 @@ from .const import (
     STORAGE_VERSION,
     TICK_SECONDS,
     TYPE_DEFAULTS,
-    TYPE_DRYER,
     TYPE_OTHER,
-    TYPE_WASHER,
 )
 from .engine import (
     CONFIDENT,
@@ -156,7 +153,6 @@ class CycleManager(DataUpdateCoordinator[None]):
         self.learn_mode = False
         self.learn_name = ""
         self.load_next: float | None = None
-        self.load_carried: float | None = None
         """Load taken over from the washer for the running dryer cycle."""
         self.match: Match | None = None
         self._matched_start: float | None = None
@@ -184,7 +180,6 @@ class CycleManager(DataUpdateCoordinator[None]):
             self.learn_mode = data.get("learn_mode", False)
             self.learn_name = data.get("learn_name", "")
             self.load_next = data.get("load_next")
-            self.load_carried = data.get("load_carried")
             self.profiles = await self.hass.async_add_executor_job(
                 ProfileStore.from_dict, data.get("profiles")
             )
@@ -433,7 +428,6 @@ class CycleManager(DataUpdateCoordinator[None]):
             data = self._event_data(event)
             if event.type == EventType.STARTED:
                 self._sync_matcher()
-                self.load_carried = self._washer_load() if self.load_next is None else None
             elif event.type == EventType.FINISHED and cycle is not None:
                 # The detector has already left RUNNING here, so ask the
                 # matcher directly instead of shown_match.
@@ -447,9 +441,6 @@ class CycleManager(DataUpdateCoordinator[None]):
                 self._matched_start = None
                 if self.load_next is not None:
                     self.history[0]["load_set"] = self.load_next
-                elif self.load_carried is not None:
-                    self.history[0]["load_carried"] = self.load_carried
-                self.load_carried = None
                 self._estimate_last()
                 if event.reason in _LEARNABLE:
                     name = self.learn_name if self.learn_mode else None
@@ -526,31 +517,11 @@ class CycleManager(DataUpdateCoordinator[None]):
         ]
         return estimate_load(heat, points, self.base_share)
 
-    def _washer_load(self) -> float | None:
-        """Load of a washer run that finished shortly before (same laundry)."""
-        if self.appliance != TYPE_DRYER:
-            return None
-        now = time.time()
-        for entry in self.hass.config_entries.async_entries(DOMAIN):
-            other = getattr(entry, "runtime_data", None)
-            if not isinstance(other, CycleManager) or other.appliance != TYPE_WASHER:
-                continue
-            last = other.last_cycle
-            end = (last or {}).get("end")
-            if not last or end is None or not 0 <= now - end <= CARRY_LOAD_WINDOW_S:
-                continue
-            load = last.get("load_set") if last.get("load_set") is not None else last.get("load")
-            if load is not None:
-                return load
-        return None
-
     @property
     def current_load(self) -> tuple[float, str] | None:
-        """Known load of the running cycle: told by the user or taken from the washer."""
+        """Known load of the running cycle, as told by the user."""
         if self.load_next is not None:
             return self.load_next, "set"
-        if self.load_carried is not None:
-            return self.load_carried, "washer"
         return None
 
     def _sample_loads(self, prof: Any) -> list[tuple[float | None, float]]:
@@ -637,7 +608,6 @@ class CycleManager(DataUpdateCoordinator[None]):
             "learn_mode": self.learn_mode,
             "learn_name": self.learn_name,
             "load_next": self.load_next,
-            "load_carried": self.load_carried,
             "phases": self.phases.to_dict(),
             "profiles": self.profiles.to_dict(),
         }

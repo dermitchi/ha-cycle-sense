@@ -54,7 +54,7 @@ VARIABLES = ("geraet", "programm", "dauer", "energie", "uhrzeit", "seit")
 """Placeholders usable in announcement texts, e.g. "{geraet} ist fertig"."""
 
 # How much louder than the music an announcement on a playing speaker is.
-MUSIC_BOOST = 0.15
+MUSIC_BOOST = 0.3
 
 
 class _Keep(dict[str, str]):
@@ -301,16 +301,19 @@ class Announcer(DataUpdateCoordinator[None]):
             _LOGGER.warning("Announcement not possible: players=%s tts=%s", players, tts_entity)
             return False
 
-        # A speaker that is already playing is stopped first (an AirPlay
-        # stream would block the announcement) and speaks a little louder
-        # than its music; Chime TTS restores the volume afterwards and an
-        # automation can restart the music when the last-announcement sensor updates.
+        # A speaker that is already playing is stopped (an AirPlay stream
+        # would block the announcement) and speaks a little louder than its
+        # music; an automation can restart the music when the
+        # last-announcement sensor updates.
         playing = [p for p in players if self.hass.states.get(p).state == STATE_PLAYING]
         quiet = [p for p in players if p not in playing]
         music_volume = {
             p: self.hass.states.get(p).attributes.get("volume_level") for p in playing
         }
-        if playing:
+
+        async def stop_music() -> None:
+            if not playing:
+                return
             try:
                 await self.hass.services.async_call(
                     "media_player", "media_stop", {ATTR_ENTITY_ID: playing}, blocking=True
@@ -326,31 +329,66 @@ class Announcer(DataUpdateCoordinator[None]):
 
         chime = opts.get(CONF_CHIME, DEFAULT_CHIME)
         if chime and chime != CHIME_NONE and self.hass.services.has_service("chime_tts", "say"):
+            chime_data = {
+                "chime_path": chime,
+                # Short breath between chime and voice (ms).
+                "offset": 400,
+                "message": text,
+                "tts_platform": tts_entity,
+                "cache": True,
+            }
 
             async def say(targets: list[str], volume: float) -> None:
-                data = {
-                    ATTR_ENTITY_ID: targets,
-                    "chime_path": chime,
-                    # Short breath between chime and voice (ms).
-                    "offset": 400,
-                    "message": text,
-                    "tts_platform": tts_entity,
-                    "volume_level": volume,
-                    "cache": True,
-                    "join_players": False,
-                }
-                await self.hass.services.async_call("chime_tts", "say", data, blocking=True)
-
-            async with self._lock:
                 # Chime TTS merges chime + speech into one file (no gap, one
                 # AirPlay start) and handles volume set/restore itself.
-                calls = [say([p], louder(p)) for p in playing]
+                await self.hass.services.async_call(
+                    "chime_tts",
+                    "say",
+                    chime_data
+                    | {ATTR_ENTITY_ID: targets, "volume_level": volume, "join_players": False},
+                    blocking=True,
+                )
+
+            async def say_over_music(media_id: str, player: str) -> None:
+                await self._set_volume([player], louder(player))
+                try:
+                    await self.hass.services.async_call(
+                        "media_player",
+                        "play_media",
+                        {
+                            ATTR_ENTITY_ID: player,
+                            "media_content_id": media_id,
+                            "media_content_type": "music",
+                        },
+                        blocking=True,
+                    )
+                finally:
+                    if music_volume.get(player) is not None:
+                        await self._set_volume([player], music_volume[player])
+
+            async with self._lock:
+                calls = []
+                if playing:
+                    # Build the file while the music still plays, so the
+                    # silence before the announcement is only the AirPlay start.
+                    media_id = None
+                    if self.hass.services.has_service("chime_tts", "say_url"):
+                        resp = await self.hass.services.async_call(
+                            "chime_tts", "say_url", chime_data, blocking=True, return_response=True
+                        )
+                        media_id = (resp or {}).get("media_content_id")
+                    await stop_music()
+                    if media_id:
+                        calls += [say_over_music(media_id, p) for p in playing]
+                    else:
+                        calls += [say([p], louder(p)) for p in playing]
                 if quiet:
                     calls.append(say(quiet, round(self.volume / 100, 2)))
                 await asyncio.gather(*calls)
             self._spoken(text)
             return True
 
+        await stop_music()
         async with self._lock:
             previous = {
                 p: self.hass.states.get(p).attributes.get("volume_level") for p in quiet

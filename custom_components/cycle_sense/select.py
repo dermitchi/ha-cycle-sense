@@ -11,7 +11,7 @@ from .entity import CycleSenseEntity
 from .manager import CycleManager
 
 NONE = "none"
-LOADS = {"low": 0.33, "half": 0.5, "full": 1.0}
+LOADS = {"low": 0.33, "half": 0.5, "three_quarter": 0.75, "full": 1.0}
 
 
 async def async_setup_entry(

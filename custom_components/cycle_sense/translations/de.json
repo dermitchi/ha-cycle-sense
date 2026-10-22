@@ -340,6 +340,7 @@
           "none": "Nicht angegeben",
           "low": "Wenig (etwa ein Drittel)",
           "half": "Halb voll",
+          "three_quarter": "Dreiviertel voll",
           "full": "Voll"
         }
       },

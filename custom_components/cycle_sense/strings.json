@@ -340,6 +340,7 @@
           "none": "Not set",
           "low": "Light (about a third)",
           "half": "Half",
+          "three_quarter": "Three quarters full",
           "full": "Full"
         }
       },

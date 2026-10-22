@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Supp
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.util import dt as dt_util
 
 from .announcer import Announcer
 from .const import CONF_ENTRY_TYPE, DOMAIN, ENTRY_ANNOUNCER
@@ -50,6 +51,9 @@ SCHEMAS = {
         {_ENTRY: cv.string, vol.Required("program"): _NAME, vol.Required("new_name"): _NAME}
     ),
     "delete_program": vol.Schema({_ENTRY: cv.string, vol.Required("program"): _NAME}),
+    "move_recording": vol.Schema(
+        {_ENTRY: cv.string, vol.Required("start"): cv.datetime, vol.Required("program"): _NAME}
+    ),
     "clear_unassigned": vol.Schema({_ENTRY: cv.string}),
     "set_load": vol.Schema(
         {
@@ -100,6 +104,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         if not await _manager(hass, call).async_delete_program(call.data["program"]):
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_program")
 
+    async def move_recording(call: ServiceCall) -> None:
+        start = call.data["start"]
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=dt_util.get_default_time_zone())
+        if not await _manager(hass, call).async_move_recording(
+            start.timestamp(), call.data["program"]
+        ):
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_recording")
+
     async def clear_unassigned(call: ServiceCall) -> ServiceResponse:
         return {"removed": await _manager(hass, call).async_clear_unassigned()}
 
@@ -120,6 +133,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     )
     hass.services.async_register(DOMAIN, "rename_program", rename_program, SCHEMAS["rename_program"])
     hass.services.async_register(DOMAIN, "delete_program", delete_program, SCHEMAS["delete_program"])
+    hass.services.async_register(DOMAIN, "move_recording", move_recording, SCHEMAS["move_recording"])
     hass.services.async_register(
         DOMAIN, "clear_unassigned", clear_unassigned, SCHEMAS["clear_unassigned"],
         supports_response=SupportsResponse.OPTIONAL,

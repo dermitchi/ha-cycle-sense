@@ -360,6 +360,9 @@
     },
     "announce_failed": {
       "message": "Durchsage fehlgeschlagen – Lautsprecher und Stimme prüfen."
+    },
+    "no_recording": {
+      "message": "Kein gespeicherter Lauf zu dieser Startzeit gefunden."
     }
   },
   "services": {
@@ -452,6 +455,24 @@
         "target": {
           "name": "Lauf",
           "description": "Letzter fertiger Lauf oder der nächste."
+        }
+      }
+    },
+    "move_recording": {
+      "name": "Aufnahme verschieben",
+      "description": "Ordnet einen gespeicherten Lauf einem anderen (oder neuen) Programm zu, z. B. wenn er falsch erkannt wurde.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Startzeit des Laufs (±3 Minuten)."
+        },
+        "program": {
+          "name": "Programm",
+          "description": "Richtiges Programm."
         }
       }
     }

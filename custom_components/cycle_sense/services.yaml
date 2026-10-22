@@ -47,6 +47,23 @@ delete_program:
       selector:
         text:
 
+move_recording:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: cycle_sense
+    start:
+      required: true
+      selector:
+        datetime:
+    program:
+      required: true
+      example: "20 Min warm"
+      selector:
+        text:
+
 set_load:
   fields:
     config_entry_id:

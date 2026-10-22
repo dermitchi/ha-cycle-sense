@@ -215,3 +215,22 @@ def test_shown_program_holds_steady():
     assert shown[-1] == "Lang"
     assert changes <= 2
     assert None not in shown[shown.index("Lang") :]
+
+
+def test_shown_program_is_stored():
+    store = ProfileStore()
+    store.learn(sample(dry(minutes_heat=18, seed=1), 1), name="Schranktrocknen")
+    store.learn(sample(dry(minutes_heat=18, seed=2), 2), name="20 Min warm")
+    res = store.learn(sample(dry(minutes_heat=18, seed=3), 3), shown="20 Min warm")
+    assert res.profile == "20 Min warm"
+    assert len(store.get("20 Min warm").samples) == 2
+    assert len(store.get("Schranktrocknen").samples) == 1
+
+
+def test_move_recording_by_start_time():
+    store = ProfileStore()
+    store.learn(sample(dry(seed=1), 1000.0), name="Schranktrocknen")
+    store.learn(sample(dry(seed=2), 5000.0), name="Schranktrocknen")
+    assert store.move_recording(5100.0, "20 Min warm").name == "20 Min warm"
+    assert [s.recorded for s in store.get("Schranktrocknen").samples] == [1000.0]
+    assert store.move_recording(9000.0, "20 Min warm") is None

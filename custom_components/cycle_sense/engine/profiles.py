@@ -230,6 +230,16 @@ class ProfileStore:
             else:
                 self.profiles.remove(prof)
 
+    def move_recording(self, start: float, name: str, tolerance: float = 180.0) -> Profile | None:
+        """Re-assign the run that started at ``start`` (± ``tolerance`` s) to ``name``."""
+        runs = [*self.unassigned, *(s for p in self.profiles for s in p.samples)]
+        near = [s for s in runs if abs(s.recorded - start) <= tolerance]
+        if not near:
+            return None
+        run = min(near, key=lambda s: abs(s.recorded - start))
+        self.remove_recording(run.recorded)
+        return self.add_sample(name, run)
+
     def rename(self, old: str, new: str) -> bool:
         """Rename a profile; merges into an existing one with the new name."""
         prof = self.get(old)
@@ -279,12 +289,22 @@ class ProfileStore:
         auto_improve: bool = True,
         auto_create: bool = True,
         auto_name_fmt: str = "Program {n}",
+        shown: str | None = None,
     ) -> LearnResult:
-        """Store a finished run: explicitly, by match, or by clustering."""
+        """Store a finished run: explicitly, by match, or by clustering.
+
+        ``shown`` is the program displayed while the run ended; it wins over a
+        fresh classification so that what was shown is also what is stored.
+        """
         if name:
             self.remove_recording(sample.recorded)
             prof = self.add_sample(name, sample)
             return LearnResult(prof.name, created=len(prof.samples) == 1)
+
+        if shown and (prof := self.get(shown)) is not None:
+            if auto_improve:
+                self.add_sample(prof.name, sample)
+            return LearnResult(prof.name)
 
         if (hit := self.classify(sample)) is not None:
             prof, dist = hit

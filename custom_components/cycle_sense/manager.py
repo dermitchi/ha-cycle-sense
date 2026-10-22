@@ -309,6 +309,21 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._save()
         return count
 
+    async def async_move_recording(self, start: float, name: str) -> bool:
+        """Put the run that started at ``start`` into program ``name``."""
+        async with self._lock:
+            prof = await self.hass.async_add_executor_job(
+                self.profiles.move_recording, start, name.strip()
+            )
+        if prof is None:
+            return False
+        for entry in self.history:
+            if abs(entry["start"] - start) <= 180:
+                entry["program"] = prof.name
+        self._estimate_last()
+        self._after_profiles_changed()
+        return True
+
     async def async_rename_program(self, old: str, new: str) -> bool:
         """Rename (or merge) a program."""
         async with self._lock:
@@ -448,7 +463,9 @@ class CycleManager(DataUpdateCoordinator[None]):
                     sample.load = self.load_next
                     self.config_entry.async_create_background_task(
                         self.hass,
-                        self._async_learn(sample, name, from_learn_mode=name is not None),
+                        self._async_learn(
+                            sample, name, from_learn_mode=name is not None, shown=data["program"]
+                        ),
                         f"{DOMAIN}_learn",
                     )
                 self.load_next = None
@@ -459,11 +476,22 @@ class CycleManager(DataUpdateCoordinator[None]):
             self._save()
 
     async def _async_learn(
-        self, sample: Sample, name: str | None, *, from_learn_mode: bool = False
+        self,
+        sample: Sample,
+        name: str | None,
+        *,
+        from_learn_mode: bool = False,
+        shown: str | None = None,
     ) -> LearnResult:
         async with self._lock:
             result = await self.hass.async_add_executor_job(
-                partial(self.profiles.learn, sample, name=name, auto_name_fmt=self.auto_name_fmt)
+                partial(
+                    self.profiles.learn,
+                    sample,
+                    name=name,
+                    auto_name_fmt=self.auto_name_fmt,
+                    shown=shown,
+                )
             )
         if from_learn_mode:
             # One scan per switch-on: the next run is recognised, not recorded.

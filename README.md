@@ -14,7 +14,7 @@ Defaults per appliance type were derived from real washer and dryer recordings.
 
 ## Installation (HACS)
 
-1. HACS → ⋮ → *Custom repositories* → `https://github.com/ttvmitchi/ha-cycle-sense`, category *Integration*.
+1. HACS → ⋮ → *Custom repositories* → `https://github.com/dermitchi/ha-cycle-sense`, category *Integration*.
 2. Install **Cycle Sense**, restart Home Assistant.
 3. *Settings → Devices & services → Add integration → Cycle Sense*, pick the plug's power sensor and the appliance type.
 

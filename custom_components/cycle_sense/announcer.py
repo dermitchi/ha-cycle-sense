@@ -55,6 +55,8 @@ VARIABLES = ("geraet", "programm", "dauer", "energie", "uhrzeit", "seit")
 
 # How much louder than the music an announcement on a playing speaker is.
 MUSIC_BOOST = 0.3
+# Pause between stopping the music and starting the announcement (s).
+AIRPLAY_RELEASE_S = 0.5
 
 
 class _Keep(dict[str, str]):
@@ -349,39 +351,13 @@ class Announcer(DataUpdateCoordinator[None]):
                     blocking=True,
                 )
 
-            async def say_over_music(media_id: str, player: str) -> None:
-                await self._set_volume([player], louder(player))
-                try:
-                    await self.hass.services.async_call(
-                        "media_player",
-                        "play_media",
-                        {
-                            ATTR_ENTITY_ID: player,
-                            "media_content_id": media_id,
-                            "media_content_type": "music",
-                        },
-                        blocking=True,
-                    )
-                finally:
-                    if music_volume.get(player) is not None:
-                        await self._set_volume([player], music_volume[player])
-
             async with self._lock:
-                calls = []
                 if playing:
-                    # Build the file while the music still plays, so the
-                    # silence before the announcement is only the AirPlay start.
-                    media_id = None
-                    if self.hass.services.has_service("chime_tts", "say_url"):
-                        resp = await self.hass.services.async_call(
-                            "chime_tts", "say_url", chime_data, blocking=True, return_response=True
-                        )
-                        media_id = (resp or {}).get("media_content_id")
                     await stop_music()
-                    if media_id:
-                        calls += [say_over_music(media_id, p) for p in playing]
-                    else:
-                        calls += [say([p], louder(p)) for p in playing]
+                    # Let the speaker release its AirPlay session, otherwise
+                    # the announcement stream fails to start.
+                    await asyncio.sleep(AIRPLAY_RELEASE_S)
+                calls = [say([p], louder(p)) for p in playing]
                 if quiet:
                     calls.append(say(quiet, round(self.volume / 100, 2)))
                 await asyncio.gather(*calls)

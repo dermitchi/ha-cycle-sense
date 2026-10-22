@@ -55,8 +55,8 @@ VARIABLES = ("geraet", "programm", "dauer", "energie", "uhrzeit", "seit")
 
 # How much louder than the music an announcement on a playing speaker is.
 MUSIC_BOOST = 0.3
-# Pause between stopping the music and starting the announcement (s).
-AIRPLAY_RELEASE_S = 0.5
+# Wait after the announcement before resuming the music (s).
+RESUME_DELAY_S = 0.5
 
 
 class _Keep(dict[str, str]):
@@ -303,25 +303,24 @@ class Announcer(DataUpdateCoordinator[None]):
             _LOGGER.warning("Announcement not possible: players=%s tts=%s", players, tts_entity)
             return False
 
-        # A speaker that is already playing is stopped (an AirPlay stream
-        # would block the announcement) and speaks a little louder than its
-        # music; an automation can restart the music when the
-        # last-announcement sensor updates.
+        # A speaker that is already playing is paused, speaks a little louder
+        # than its music and then resumes it, so the music stays under the
+        # speaker's own control (e.g. Siri on a HomePod).
         playing = [p for p in players if self.hass.states.get(p).state == STATE_PLAYING]
         quiet = [p for p in players if p not in playing]
         music_volume = {
             p: self.hass.states.get(p).attributes.get("volume_level") for p in playing
         }
 
-        async def stop_music() -> None:
+        async def music(service: str) -> None:
             if not playing:
                 return
             try:
                 await self.hass.services.async_call(
-                    "media_player", "media_stop", {ATTR_ENTITY_ID: playing}, blocking=True
+                    "media_player", service, {ATTR_ENTITY_ID: playing}, blocking=True
                 )
-            except Exception:  # noqa: BLE001 - speaking matters more than stopping
-                _LOGGER.debug("Could not stop %s", playing, exc_info=True)
+            except Exception:  # noqa: BLE001 - speaking matters more than the music
+                _LOGGER.debug("Could not %s %s", service, playing, exc_info=True)
 
         def louder(player: str) -> float:
             level = music_volume.get(player)
@@ -352,19 +351,28 @@ class Announcer(DataUpdateCoordinator[None]):
                 )
 
             async with self._lock:
-                if playing:
-                    await stop_music()
-                    # Let the speaker release its AirPlay session, otherwise
-                    # the announcement stream fails to start.
-                    await asyncio.sleep(AIRPLAY_RELEASE_S)
+                if playing and self.hass.services.has_service("chime_tts", "say_url"):
+                    # Build (and cache) the file while the music still plays,
+                    # so the pause before the announcement is only the AirPlay start.
+                    try:
+                        await self.hass.services.async_call(
+                            "chime_tts", "say_url", chime_data, blocking=True, return_response=True
+                        )
+                    except Exception:  # noqa: BLE001 - say builds it again if needed
+                        _LOGGER.debug("Could not prepare announcement", exc_info=True)
+                await music("media_pause")
                 calls = [say([p], louder(p)) for p in playing]
                 if quiet:
                     calls.append(say(quiet, round(self.volume / 100, 2)))
                 await asyncio.gather(*calls)
+                if playing:
+                    # The speaker needs a moment to drop the AirPlay session.
+                    await asyncio.sleep(RESUME_DELAY_S)
+                    await music("media_play")
             self._spoken(text)
             return True
 
-        await stop_music()
+        await music("media_pause")
         async with self._lock:
             previous = {
                 p: self.hass.states.get(p).attributes.get("volume_level") for p in quiet
@@ -388,6 +396,9 @@ class Announcer(DataUpdateCoordinator[None]):
                 for player, level in previous.items():
                     if level is not None:
                         await self._set_volume([player], level)
+            if playing:
+                await asyncio.sleep(RESUME_DELAY_S)
+                await music("media_play")
         self._spoken(text)
         return True
 

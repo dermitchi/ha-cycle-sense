@@ -38,6 +38,12 @@ CONFIDENT = 0.6
 """Confidence needed before a match may change the end delay."""
 SHOW_CONFIDENCE = 0.4
 """Confidence needed before a match is shown to the user."""
+SHOW_MARGIN = 1.5
+"""A program is only shown once it is this much likelier than the runner-up."""
+SHOW_BINS = 2
+"""Bins a program must lead (or fail) in a row before the display changes."""
+HIDE_CONFIDENCE = 0.15
+"""A shown program stays until its confidence falls below this."""
 END_CONFIDENT = 0.8
 """Confidence needed to call a still-active run finished at its program end."""
 NEAR_END_FRACTION = 0.05
@@ -346,6 +352,9 @@ class Matcher:
         self._dtw: dict[str, tuple[Profile, StreamingDTW]] = {}
         self.n = 0
         self.pinned: str | None = None
+        self._shown: str | None = None
+        self._lead: tuple[str | None, int] = (None, 0)
+        self._low = 0
 
     def reset(self) -> None:
         """Start matching a new cycle against the current profiles."""
@@ -355,6 +364,9 @@ class Matcher:
             if p.template
         }
         self.n = 0
+        self._shown = None
+        self._lead = (None, 0)
+        self._low = 0
 
     def push(self, power: float) -> None:
         """Feed one completed bin of the running cycle."""
@@ -362,6 +374,50 @@ class Matcher:
         for _, dtw in self._dtw.values():
             dtw.push(x)
         self.n += 1
+        self._update_shown()
+
+    def _update_shown(self) -> None:
+        """Change the displayed program only on a clear, lasting lead.
+
+        Many programs start alike (a dryer heats first in every program), so
+        the best guess wobbles early on. Without this the display flips
+        between a name and “unknown” every minute.
+        """
+        cands = self.candidates()
+        probs = {prof.name: prob for prof, _, prob in cands}
+        # A shown program the run has outgrown is wrong for sure: let a clear
+        # leader take over right away instead of showing “unknown” first.
+        need = SHOW_BINS
+        if self._shown is not None and self._shown not in probs:
+            self._shown = None
+            need = 1
+        if self._shown is not None:
+            self._low = self._low + 1 if probs.get(self._shown, 0.0) < HIDE_CONFIDENCE else 0
+            if self._low >= SHOW_BINS:
+                self._shown = None
+                self._low = 0
+        leader = None
+        if cands:
+            runner_up = cands[1][2] if len(cands) > 1 else 0.0
+            prob = cands[0][2]
+            if prob >= SHOW_CONFIDENCE and prob >= SHOW_MARGIN * runner_up:
+                leader = cands[0][0].name
+        name, count = self._lead
+        self._lead = (leader, count + 1 if leader == name else 1)
+        if leader is not None and leader != self._shown and self._lead[1] >= need:
+            self._shown = leader
+            self._low = 0
+
+    def shown(self) -> Match | None:
+        """The program to display, held steady (see ``_update_shown``)."""
+        if self.pinned is not None:
+            return self.best()
+        if self._shown is None:
+            return None
+        for prof, dtw, prob in self.candidates():
+            if prof.name == self._shown:
+                return self._match(prof, dtw, prob)
+        return None
 
     def _scored(self) -> list[tuple[Profile, StreamingDTW, float]]:
         out = []

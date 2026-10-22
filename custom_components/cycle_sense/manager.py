@@ -51,7 +51,6 @@ from .const import (
 )
 from .engine import (
     CONFIDENT,
-    SHOW_CONFIDENCE,
     CycleRecord,
     Detector,
     DetectorConfig,
@@ -436,13 +435,9 @@ class CycleManager(DataUpdateCoordinator[None]):
                 self._sync_matcher()
                 self.load_carried = self._washer_load() if self.load_next is None else None
             elif event.type == EventType.FINISHED and cycle is not None:
-                # The detector has already left RUNNING here, so use the last
-                # match directly instead of shown_match.
-                match = (
-                    self.match
-                    if self.match and self.match.confidence >= SHOW_CONFIDENCE
-                    else None
-                )
+                # The detector has already left RUNNING here, so ask the
+                # matcher directly instead of shown_match.
+                match = self.matcher.shown()
                 data["program"] = match.profile.name if match else None
                 data["confidence"] = round(match.confidence * 100) if match else None
                 self.cycle_count += 1
@@ -736,7 +731,7 @@ class CycleManager(DataUpdateCoordinator[None]):
         """The current match if it is confident enough to show."""
         if self.match is None or self.current_cycle is None:
             return None
-        return self.match if self.match.confidence >= SHOW_CONFIDENCE else None
+        return self.matcher.shown()
 
     @property
     def remaining_s(self) -> float | None:

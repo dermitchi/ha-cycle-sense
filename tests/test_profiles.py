@@ -197,3 +197,21 @@ def test_clear_unassigned():
     store.learn(sample(wash()))
     assert store.clear_unassigned() == 1
     assert store.unassigned == []
+
+
+def test_shown_program_holds_steady():
+    """Programs that start alike must not make the display flip every bin."""
+    store = ProfileStore()
+    store.learn(sample([130.0] + [2600.0] * 8 + [130.0] * 3, 1), name="Kurz")
+    store.learn(sample([130.0] + [2600.0] * 40 + [130.0] * 10, 2), name="Lang")
+    m = Matcher(store, 60, 10)
+    m.reset()
+    shown = []
+    for p in [130.0] + [2600.0] * 30:
+        m.push(p)
+        s = m.shown()
+        shown.append(s.profile.name if s else None)
+    changes = sum(1 for a, b in zip(shown, shown[1:]) if a != b)
+    assert shown[-1] == "Lang"
+    assert changes <= 2
+    assert None not in shown[shown.index("Lang") :]

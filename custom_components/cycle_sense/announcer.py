@@ -8,7 +8,13 @@ import logging
 import string
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import ATTR_ENTITY_ID, STATE_HOME, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    STATE_HOME,
+    STATE_PLAYING,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+)
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
@@ -292,35 +298,44 @@ class Announcer(DataUpdateCoordinator[None]):
             _LOGGER.warning("Announcement not possible: players=%s tts=%s", players, tts_entity)
             return False
 
+        # A speaker that is already playing keeps its volume, so the
+        # announcement is exactly as loud as the music around it.
+        playing = [p for p in players if self.hass.states.get(p).state == STATE_PLAYING]
+        quiet = [p for p in players if p not in playing]
+
         chime = opts.get(CONF_CHIME, DEFAULT_CHIME)
         if chime and chime != CHIME_NONE and self.hass.services.has_service("chime_tts", "say"):
+
+            async def say(targets: list[str], volume: float | None) -> None:
+                data = {
+                    ATTR_ENTITY_ID: targets,
+                    "chime_path": chime,
+                    # Short breath between chime and voice (ms).
+                    "offset": 400,
+                    "message": text,
+                    "tts_platform": tts_entity,
+                    "cache": True,
+                    "join_players": False,
+                }
+                if volume is not None:
+                    data["volume_level"] = volume
+                await self.hass.services.async_call("chime_tts", "say", data, blocking=True)
+
             async with self._lock:
                 # Chime TTS merges chime + speech into one file (no gap, one
                 # AirPlay start) and handles volume set/restore itself.
-                await self.hass.services.async_call(
-                    "chime_tts",
-                    "say",
-                    {
-                        ATTR_ENTITY_ID: players,
-                        "chime_path": chime,
-                        # Short breath between chime and voice (ms).
-                        "offset": 400,
-                        "message": text,
-                        "tts_platform": tts_entity,
-                        "volume_level": round(self.volume / 100, 2),
-                        "cache": True,
-                        "join_players": False,
-                    },
-                    blocking=True,
-                )
+                calls = [say(playing, None)] if playing else []
+                if quiet:
+                    calls.append(say(quiet, round(self.volume / 100, 2)))
+                await asyncio.gather(*calls)
             self._spoken(text)
             return True
 
         async with self._lock:
             previous = {
-                p: self.hass.states.get(p).attributes.get("volume_level") for p in players
+                p: self.hass.states.get(p).attributes.get("volume_level") for p in quiet
             }
-            await self._set_volume(players, self.volume / 100)
+            await self._set_volume(quiet, self.volume / 100)
             try:
                 await self.hass.services.async_call(
                     "tts",
@@ -350,6 +365,8 @@ class Announcer(DataUpdateCoordinator[None]):
         self.async_update_listeners()
 
     async def _set_volume(self, players: list[str], level: float) -> None:
+        if not players:
+            return
         try:
             await self.hass.services.async_call(
                 "media_player",

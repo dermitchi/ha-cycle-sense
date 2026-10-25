@@ -48,10 +48,12 @@ from .const import (
 )
 from .engine import (
     CONFIDENT,
+    END_CONFIDENT,
     CycleRecord,
     Detector,
     DetectorConfig,
     DetectorEvent,
+    Eta,
     EventType,
     FinishReason,
     LearnResult,
@@ -60,13 +62,12 @@ from .engine import (
     Matcher,
     Phase,
     ProfileStore,
+    Run,
     Sample,
-    blend_remaining,
+    estimate_eta,
     estimate_load,
     heat_wh,
     heating_end,
-    predict_duration,
-    predict_remaining,
     tail_bins,
 )
 from .engine.load import BASE_SHARE, DEFAULT_BASE_SHARE
@@ -156,6 +157,8 @@ class CycleManager(DataUpdateCoordinator[None]):
         """Load taken over from the washer for the running dryer cycle."""
         self.match: Match | None = None
         self._matched_start: float | None = None
+        self._sure: tuple[tuple[float, str], float] | None = None
+        """(cycle start, program) and finish time once the remaining time was reliable."""
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
         )
@@ -758,27 +761,52 @@ class CycleManager(DataUpdateCoordinator[None]):
     @property
     def remaining_s(self) -> float | None:
         """Estimated remaining seconds of the running cycle."""
+        eta = self.eta
+        return None if eta is None else eta.remaining_s
+
+    @property
+    def remaining_reliable(self) -> bool:
+        """True once the remaining time is good enough to show as a time."""
+        eta = self.eta
+        return eta is not None and eta.reliable
+
+    @property
+    def eta(self) -> Eta | None:
+        """Remaining seconds of the running cycle and whether they are reliable.
+
+        Once reliable, the finish time sticks for this run and program: a
+        second heating or a wobble of the shape match only moves it when
+        the estimate is reliable again, so the time never jumps back to a
+        guess.
+        """
         if self.shown_match is None or self.current_cycle is None:
             return None
-        # Remaining is measured at the last completed bin; subtract the
-        # part of the current bin that has already passed.
         cycle = self.current_cycle
         match = self.shown_match
-        remaining = match.remaining_s
+        est = Eta(match.remaining_s, False)
         if match.confidence >= CONFIDENT:
-            # After heating, what is left (rinse, spin) takes about as long
-            # as in the program's other runs, however full the drum is;
-            # the shape match alone assumes the template's heating time.
-            tail = predict_remaining(
-                cycle.bins, [tail_bins(s.trace) for s in match.profile.samples], cycle.bin_s
+            known = self.current_load
+            loads = (
+                [load for load, _ in self._sample_loads(match.profile)]
+                if known is not None
+                else [None] * len(match.profile.samples)
             )
-            elapsed = len(cycle.bins) * cycle.bin_s
-            if tail is not None:
-                remaining = blend_remaining(remaining, elapsed + tail, elapsed)
-            elif (known := self.current_load) is not None:
-                # Before/without the tail: a known load scales the whole run.
-                total = predict_duration(known[0], self._sample_loads(match.profile))
-                if total is not None:
-                    remaining = blend_remaining(remaining, total, elapsed)
-        into_bin = (time.time() - cycle.start) - len(cycle.bins) * cycle.bin_s
-        return max(0.0, remaining - max(0.0, into_bin))
+            runs = [
+                Run(s.duration_s, tail_bins(s.trace), s.energy_wh, load)
+                for s, load in zip(match.profile.samples, loads, strict=True)
+            ]
+            est = estimate_eta(
+                match.remaining_s, cycle.bins, cycle.bin_s, runs, known[0] if known else None
+            )
+            # Recognised by shape alone, the program itself may still change.
+            if self.matcher.pinned is None and match.confidence < END_CONFIDENT:
+                est = Eta(est.remaining_s, False)
+        # The estimate refers to the last completed bin.
+        at = cycle.start + len(cycle.bins) * cycle.bin_s
+        now = max(at, time.time())
+        key = (cycle.start, match.profile.name)
+        if est.reliable:
+            self._sure = (key, at + est.remaining_s)
+        elif self._sure is not None and self._sure[0] == key:
+            return Eta(max(0.0, self._sure[1] - now), True)
+        return Eta(max(0.0, at + est.remaining_s - now), est.reliable)

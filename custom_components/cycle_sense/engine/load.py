@@ -129,6 +129,16 @@ def predict_duration(load: float, points: Iterable[tuple[float | None, float]]) 
     much (wet) laundry there is (real Schranktrocknen: full ~56 min, a
     third ~18 min). Shape matching alone always assumes the template's load.
     """
+    return _by_load(load, points)
+
+
+def predict_energy(load: float, points: Iterable[tuple[float | None, float]]) -> float | None:
+    """Energy in Wh of a whole run for ``load`` from ``(load, energy_wh)`` of runs of one program."""
+    return _by_load(load, points)
+
+
+def _by_load(load: float, points: Iterable[tuple[float | None, float]]) -> float | None:
+    """Line fit of a value over the load of a program's runs."""
     pts = [(l, d) for l, d in points if l is not None and d > 0]
     if not pts:
         return None

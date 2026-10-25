@@ -10,6 +10,7 @@ from .detector import (
     Phase,
 )
 from .dtw import StreamingDTW, dtw_distance, feature, features
+from .eta import Eta, Run, estimate as estimate_eta
 from .load import (
     LoadEstimate,
     blend_remaining,
@@ -23,6 +24,7 @@ from .load import (
 )
 from .profiles import (
     CONFIDENT,
+    END_CONFIDENT,
     SHOW_CONFIDENCE,
     LearnResult,
     Match,
@@ -34,11 +36,13 @@ from .profiles import (
 
 __all__ = [
     "CONFIDENT",
+    "END_CONFIDENT",
     "SHOW_CONFIDENCE",
     "CycleRecord",
     "Detector",
     "DetectorConfig",
     "DetectorEvent",
+    "Eta",
     "EventType",
     "FinishReason",
     "LearnResult",
@@ -48,10 +52,12 @@ __all__ = [
     "Phase",
     "Profile",
     "ProfileStore",
+    "Run",
     "Sample",
     "StreamingDTW",
     "blend_remaining",
     "dtw_distance",
+    "estimate_eta",
     "estimate_load",
     "feature",
     "features",

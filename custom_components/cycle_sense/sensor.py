@@ -67,6 +67,10 @@ def _remaining(m: CycleManager) -> float | None:
     return None if rem is None else round(rem / 60)
 
 
+def _eta_attrs(m: CycleManager) -> dict[str, Any]:
+    return {"reliable": m.remaining_reliable} if m.current_cycle is not None else {}
+
+
 def _finish_time(m: CycleManager) -> datetime | None:
     rem = m.remaining_s
     if rem is None:
@@ -156,11 +160,13 @@ SENSORS: tuple[CycleSensorDescription, ...] = (
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.MINUTES,
         value_fn=_remaining,
+        attrs_fn=_eta_attrs,
     ),
     CycleSensorDescription(
         key="finish_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=_finish_time,
+        attrs_fn=_eta_attrs,
     ),
     CycleSensorDescription(
         key="progress",

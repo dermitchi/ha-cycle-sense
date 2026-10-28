@@ -26,6 +26,14 @@ BASE_SHARE = {"washer": 0.3, "dryer": 0.1}
 DEFAULT_BASE_SHARE = 0.2
 MIN_SPREAD = 0.2
 """Calibrated loads must differ this much for a line fit."""
+MIN_FIT = 0.3
+"""Least R² of the heat-over-load line once there are three calibrations.
+
+Sensor drying heats by how wet the laundry is, not only how much there is
+(real Schranktrocknen: a third full heated 265 and 1010 Wh, half 352 and
+1079 Wh, a few flannels 719 Wh – R² 0.06). Such a program gives no load
+estimate at all rather than a made-up one.
+"""
 MIN_LOAD = 0.05
 MAX_LOAD = 1.0
 LEVELS = ((0.45, "low"), (0.8, "half"), (2.0, "full"))
@@ -79,7 +87,11 @@ def estimate(
         ml = sum(loads) / n
         mh = sum(h for _, h in pts) / n
         sxx = sum((l - ml) ** 2 for l in loads)
-        slope = sum((l - ml) * (h - mh) for l, h in pts) / sxx
+        sxy = sum((l - ml) * (h - mh) for l, h in pts)
+        syy = sum((h - mh) ** 2 for _, h in pts)
+        if n >= 3 and syy > 0 and sxy * sxy / (sxx * syy) < MIN_FIT:
+            return None
+        slope = sxy / sxx
         if slope > 0:
             value = ml + (heat - mh) / slope
             return LoadEstimate(_clamp(value), "line", n)

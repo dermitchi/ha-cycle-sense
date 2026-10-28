@@ -482,6 +482,28 @@
           "description": "Richtiges Programm."
         }
       }
+    },
+    "merge_recordings": {
+      "name": "Aufnahmen zusammenlegen",
+      "description": "Verbindet einen Lauf mit dem direkt folgenden zu einem Lauf, wenn er zu früh als fertig gemeldet wurde und danach weiterlief.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Startzeit des ersten Teils (±3 Minuten)."
+        },
+        "program": {
+          "name": "Programm",
+          "description": "Programm des ganzen Laufs (leer: wie erkannt)."
+        },
+        "load": {
+          "name": "Beladung",
+          "description": "Wie voll die Trommel war (optional)."
+        }
+      }
     }
   }
 }

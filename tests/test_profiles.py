@@ -2,7 +2,7 @@
 
 import random
 
-from engine import Matcher, ProfileStore, Sample
+from engine import Match, Matcher, ProfileStore, Sample
 from engine.profiles import MAX_SAMPLES
 
 
@@ -234,3 +234,40 @@ def test_move_recording_by_start_time():
     assert store.move_recording(5100.0, "20 Min warm").name == "20 Min warm"
     assert [s.recorded for s in store.get("Schranktrocknen").samples] == [1000.0]
     assert store.move_recording(9000.0, "20 Min warm") is None
+
+
+def test_merge_recordings_joins_a_run_cut_in_two():
+    store = ProfileStore()
+    first = wash(minutes_wash=40, seed=1)
+    store.learn(sample(first, 1000.0), name="Pflegeleicht 60°")
+    rest = [170.0] * 8 + [220.0] * 5
+    store.learn(sample(rest, 1000.0 + (len(first) + 2) * 60), name="Koch-/Buntwäsche 60°")
+    merged = store.merge_recordings(1000.0, 1000.0 + (len(first) + 2) * 60, 60)
+    assert merged is not None
+    assert merged.recorded == 1000.0
+    assert len(merged.trace) == len(first) + 2 + len(rest)
+    assert merged.duration_s == (len(first) + 2 + len(rest)) * 60
+    assert store.profiles == []
+    store.add_sample("Koch-/Buntwäsche 60°", merged)
+    assert len(store.get("Koch-/Buntwäsche 60°").samples) == 1
+
+
+def test_short_finish_wait_needs_a_sure_match():
+    # Two programs can look alike for an hour; only a sure match may end
+    # the run after the short wait (real washer, 28.10.: 64 % → cut early).
+    store = ProfileStore()
+    trace = wash(seed=1)
+    store.learn(sample(trace, 1), name="A")
+    m = Matcher(store, 60, 8)
+    m.reset()
+    for p in trace:
+        m.push(p)
+    prof = store.get("A")
+    pos = len(prof.template) - 1
+
+    def at(conf):
+        m.best = lambda: Match(prof, conf, 0.05, pos, 0, 1.0)
+        return m.end_delay(300, 120, 2700)
+
+    assert at(0.9) == 120
+    assert at(0.7) == 300

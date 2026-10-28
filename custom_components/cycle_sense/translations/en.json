@@ -482,6 +482,28 @@
           "description": "Correct program."
         }
       }
+    },
+    "merge_recordings": {
+      "name": "Merge recordings",
+      "description": "Joins a run with the run right after it, when it was reported finished too early and then went on.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Start time of the first part (±3 minutes)."
+        },
+        "program": {
+          "name": "Program",
+          "description": "Program of the whole run (empty: as recognised)."
+        },
+        "load": {
+          "name": "Load",
+          "description": "How full the drum was (optional)."
+        }
+      }
     }
   }
 }

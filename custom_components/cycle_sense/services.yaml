@@ -64,6 +64,29 @@ move_recording:
       selector:
         text:
 
+merge_recordings:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: cycle_sense
+    start:
+      required: true
+      selector:
+        datetime:
+    program:
+      example: "Koch-/Buntwäsche 60°"
+      selector:
+        text:
+    load:
+      example: 100
+      selector:
+        number:
+          min: 5
+          max: 100
+          unit_of_measurement: "%"
+
 set_load:
   fields:
     config_entry_id:

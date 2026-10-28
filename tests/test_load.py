@@ -109,3 +109,11 @@ def test_duration_needs_two_different_loads():
     assert predict_duration(1.0, [(None, 20 * 60), (0.33, 20 * 60)]) is None
     # Same length at different loads (timed): no positive slope.
     assert predict_duration(1.0, [(0.2, 20 * 60), (1.0, 20 * 60)]) is None
+
+
+def test_scattered_calibrations_give_no_estimate():
+    # Real Schranktrocknen calibrations: heating says nothing about the load.
+    pts = [(0.33, 265), (0.67, 1008), (0.5, 352), (0.33, 1010), (0.5, 1079), (0.1, 719)]
+    assert estimate_load(700, pts) is None
+    # Real Koch-/Buntwäsche 40° calibrations still fit well enough.
+    assert estimate_load(300, [(0.1, 207), (0.5, 387), (0.75, 370), (1.0, 347)]) is not None

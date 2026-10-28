@@ -240,6 +240,40 @@ class ProfileStore:
         self.remove_recording(run.recorded)
         return self.add_sample(name, run)
 
+    def merge_recordings(
+        self, first: float, second: float, bin_s: int, tolerance: float = 180.0
+    ) -> Sample | None:
+        """Join two stored runs that were really one (cut by a pause) into one run.
+
+        Both are removed from wherever they are stored; the joined run is
+        returned for the caller to file under a program. The gap between
+        them is filled with the standby level.
+        """
+        runs = [*self.unassigned, *(s for p in self.profiles for s in p.samples)]
+
+        def find(start: float) -> Sample | None:
+            near = [s for s in runs if abs(s.recorded - start) <= tolerance]
+            return min(near, key=lambda s: abs(s.recorded - start)) if near else None
+
+        a, b = find(first), find(second)
+        if a is None or b is None or a is b:
+            return None
+        if b.recorded < a.recorded:
+            a, b = b, a
+        gap = max(0, round((b.recorded - a.recorded) / bin_s) - len(a.trace))
+        standby = min([*a.trace, *b.trace]) if a.trace or b.trace else 0.0
+        merged = Sample(
+            trace=[*a.trace, *([standby] * gap), *b.trace],
+            duration_s=b.recorded + b.duration_s - a.recorded,
+            energy_wh=a.energy_wh + b.energy_wh,
+            recorded=a.recorded,
+            source="learn" if "learn" in (a.source, b.source) else a.source,
+            load=b.load if b.load is not None else a.load,
+        )
+        self.remove_recording(a.recorded)
+        self.remove_recording(b.recorded)
+        return merged
+
     def rename(self, old: str, new: str) -> bool:
         """Rename a profile; merges into an existing one with the new name."""
         prof = self.get(old)
@@ -519,6 +553,11 @@ class Matcher:
         Near the end of a confidently recognised program a short wait is
         enough. If the program has a long pause at this point (soaking,
         dishwasher drying) the wait is stretched to cover it.
+
+        The short wait needs a sure match: two programs can look the same
+        for an hour and only one of them ends there (real washer runs:
+        Pflegeleicht 60° and a full Koch-/Buntwäsche 60° up to minute 59,
+        which then rinsed and spun for another 17 minutes).
         """
         match = self.best()
         if match is None or match.confidence < CONFIDENT:
@@ -528,7 +567,8 @@ class Matcher:
         active_end = active[-1] if active else len(tmpl) - 1
         near = max(2, int(len(tmpl) * NEAR_END_FRACTION))
         if (
-            active_end - match.position <= near
+            match.confidence >= END_CONFIDENT
+            and active_end - match.position <= near
             and NEAR_END_MIN_ELAPSED * len(tmpl)
             <= self.n
             <= len(tmpl) + max(3, int(len(tmpl) * NEAR_END_FRACTION))

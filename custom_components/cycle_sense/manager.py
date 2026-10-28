@@ -348,6 +348,54 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._after_profiles_changed()
         return True
 
+    async def async_merge_recordings(
+        self, start: float, program: str | None = None, load: float | None = None
+    ) -> str | None:
+        """Join the run that started at ``start`` with the run right after it.
+
+        For a cycle that was reported finished too early and then went on as
+        a second “run”. Returns the program the joined run is stored under.
+        """
+        idx = next(
+            (i for i, h in enumerate(self.history) if abs(h["start"] - start) <= 180), None
+        )
+        # History is newest first: the following run is the entry before.
+        if idx is None or idx == 0:
+            return None
+        first, second = self.history[idx], self.history[idx - 1]
+        name = (program or first.get("program") or second.get("program") or "").strip()
+        if not name:
+            raise ValueError("no_name")
+        async with self._lock:
+            sample = await self.hass.async_add_executor_job(
+                self.profiles.merge_recordings, first["start"], second["start"], self.config.bin_s
+            )
+            if sample is None:
+                return None
+            if load is not None:
+                sample.load = load
+            prof = await self.hass.async_add_executor_job(self.profiles.add_sample, name, sample)
+        joined = first | {
+            "end": second["end"],
+            "finished_at": second["finished_at"],
+            "duration_min": round(sample.duration_s / 60, 1),
+            "energy_kwh": round(first["energy_kwh"] + second["energy_kwh"], 3),
+            "peak_w": max(first["peak_w"], second["peak_w"]),
+            "reason": second["reason"],
+            "heat_wh": round(heat_wh(sample.trace, self.config.bin_s)),
+            "program": prof.name,
+        }
+        if load is not None:
+            joined["load_set"] = load
+        elif second.get("load_set") is not None:
+            joined["load_set"] = second["load_set"]
+        self.history[idx - 1 : idx + 1] = [joined]
+        self.cycle_count = max(0, self.cycle_count - 1)
+        if idx - 1 == 0:
+            self._estimate_last()
+        self._after_profiles_changed()
+        return prof.name
+
     async def async_rename_program(self, old: str, new: str) -> bool:
         """Rename (or merge) a program."""
         async with self._lock:

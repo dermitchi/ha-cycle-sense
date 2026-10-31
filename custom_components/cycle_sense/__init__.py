@@ -54,6 +54,7 @@ SCHEMAS = {
     "move_recording": vol.Schema(
         {_ENTRY: cv.string, vol.Required("start"): cv.datetime, vol.Required("program"): _NAME}
     ),
+    "delete_recording": vol.Schema({_ENTRY: cv.string, vol.Required("start"): cv.datetime}),
     "merge_recordings": vol.Schema(
         {
             _ENTRY: cv.string,
@@ -121,6 +122,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ):
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_recording")
 
+    async def delete_recording(call: ServiceCall) -> None:
+        start = call.data["start"]
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=dt_util.get_default_time_zone())
+        if not await _manager(hass, call).async_delete_recording(start.timestamp()):
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_recording")
+
     async def merge_recordings(call: ServiceCall) -> ServiceResponse:
         start = call.data["start"]
         if start.tzinfo is None:
@@ -159,6 +167,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.services.async_register(DOMAIN, "rename_program", rename_program, SCHEMAS["rename_program"])
     hass.services.async_register(DOMAIN, "delete_program", delete_program, SCHEMAS["delete_program"])
     hass.services.async_register(DOMAIN, "move_recording", move_recording, SCHEMAS["move_recording"])
+    hass.services.async_register(DOMAIN, "delete_recording", delete_recording, SCHEMAS["delete_recording"])
     hass.services.async_register(
         DOMAIN, "merge_recordings", merge_recordings, SCHEMAS["merge_recordings"],
         supports_response=SupportsResponse.OPTIONAL,

@@ -60,6 +60,7 @@ Forgot to switch it on? Enter the name and press *Learn last cycle*. Programs ca
 | `cycle_sense.learn_last_cycle` | save the last finished cycle as a recording of a program |
 | `cycle_sense.rename_program` | rename a program (renaming to an existing name merges them) |
 | `cycle_sense.delete_program` | delete a program |
+| `cycle_sense.delete_recording` | forget one stored run, e.g. one that was cut off too early |
 | `cycle_sense.merge_recordings` | join a run with the run right after it, when it was reported finished too early and then went on |
 | `cycle_sense.set_load` | tell how full the drum was (`target: last`) or will be (`next`), in % – calibrates the load estimate per program |
 | `cycle_sense.import_history` | learn from cycles in the recorder history (returns a summary) |

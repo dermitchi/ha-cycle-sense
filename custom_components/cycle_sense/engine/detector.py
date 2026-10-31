@@ -13,9 +13,11 @@ Phases::
     FINISHED ──(door / switched off / acknowledged / timeout / new cycle)──▶ OFF
 
 "Significant activity" is any stretch above ``end_power`` that lasts longer
-than ``spike_max_s``. Shorter bursts – the anti-crease drum turns of a dryer
-or the post-spin twitches of a washer – neither keep a cycle alive nor start
-a new one.
+than ``spike_max_s``. A dip of up to ``dip_merge_s`` does not interrupt such a
+stretch: a washer tumbling a light load drops below ``end_power`` for a single
+sample between its bursts. Shorter bursts – the anti-crease drum turns of a
+dryer or the post-spin twitches of a washer – neither keep a cycle alive nor
+start a new one.
 """
 
 from __future__ import annotations
@@ -69,6 +71,7 @@ class DetectorConfig:
     start_dropout_s: float = 60.0
     end_power: float = 8.0
     spike_max_s: float = 150.0
+    dip_merge_s: float = 45.0
     end_delay_s: float = 300.0
     off_power: float = 0.5
     off_confirm_s: float = 30.0
@@ -194,6 +197,7 @@ class Detector:
         self.cand_below_since: float | None = None
         self.run_start: float | None = None
         self.run_significant = False
+        self.run_dip_since: float | None = None
         self.last_active: float | None = None
         self.off_since: float | None = None
         self.finished_since: float | None = None
@@ -295,7 +299,7 @@ class Detector:
 
     def _active_end(self, now: float) -> float:
         if self.run_significant:
-            return now
+            return self.run_dip_since if self.run_dip_since is not None else now
         assert self.last_active is not None
         return self.last_active
 
@@ -313,7 +317,9 @@ class Detector:
             if self.off_since is not None and self.available:
                 cands.append(self.off_since + cfg.off_confirm_s)
             if self.run_start is not None:
-                if not self.run_significant:
+                if self.run_dip_since is not None:
+                    cands.append(self.run_dip_since + cfg.dip_merge_s)
+                elif not self.run_significant:
                     cands.append(self.run_start + cfg.spike_max_s)
             elif self.last_active is not None and self.available:
                 cands.append(self.last_active + self._end_delay(self.last_active, now))
@@ -385,11 +391,9 @@ class Detector:
             if self.run_start is None:
                 self.run_start = ts
                 self.run_significant = False
-        elif self.run_start is not None:
-            if self.run_significant:
-                self.last_active = ts
-            self.run_start = None
-            self.run_significant = False
+            self.run_dip_since = None
+        elif self.run_start is not None and self.run_dip_since is None:
+            self.run_dip_since = ts
 
     def _evaluate(self, t: float, events: list[DetectorEvent]) -> bool:
         """Apply time-based transitions at ``t``. Returns True on change."""
@@ -452,6 +456,15 @@ class Detector:
             return True
 
         if self.run_start is not None:
+            if self.run_dip_since is not None:
+                if t - self.run_dip_since < cfg.dip_merge_s:
+                    return False
+                if self.run_significant:
+                    self.last_active = self.run_dip_since
+                self.run_start = None
+                self.run_significant = False
+                self.run_dip_since = None
+                return True
             if not self.run_significant and t - self.run_start >= cfg.spike_max_s:
                 self.run_significant = True
                 return True
@@ -475,6 +488,7 @@ class Detector:
         self.phase = Phase.RUNNING
         self.cand_start = None
         self.cand_below_since = None
+        self.run_dip_since = None
         self.last_active = t
         if self.power is not None and self.power > self.config.end_power:
             self.run_start = self.cycle.start
@@ -488,6 +502,7 @@ class Detector:
         self.cycle = None
         self.run_start = None
         self.run_significant = False
+        self.run_dip_since = None
         self.last_active = None
 
     def _finish(self, t: float, reason: FinishReason, events: list[DetectorEvent]) -> None:
@@ -549,6 +564,7 @@ class Detector:
         "cand_below_since",
         "run_start",
         "run_significant",
+        "run_dip_since",
         "last_active",
         "off_since",
         "finished_since",

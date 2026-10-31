@@ -504,6 +504,20 @@
           "description": "Wie voll die Trommel war (optional)."
         }
       }
+    },
+    "delete_recording": {
+      "name": "Aufnahme löschen",
+      "description": "Vergisst einen einzelnen gespeicherten Lauf, z. B. einen zu früh abgeschnittenen.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gerät",
+          "description": "Das Cycle-Sense-Gerät."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Startzeit des Laufs (±3 Minuten)."
+        }
+      }
     }
   }
 }

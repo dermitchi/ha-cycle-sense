@@ -64,6 +64,18 @@ move_recording:
       selector:
         text:
 
+delete_recording:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: cycle_sense
+    start:
+      required: true
+      selector:
+        datetime:
+
 merge_recordings:
   fields:
     config_entry_id:

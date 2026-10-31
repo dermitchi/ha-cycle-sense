@@ -271,3 +271,21 @@ def test_short_finish_wait_needs_a_sure_match():
 
     assert at(0.9) == 120
     assert at(0.7) == 300
+
+
+def test_shown_program_is_not_stored_when_length_is_far_off():
+    store = ProfileStore()
+    store.add_sample("Lang", sample(wash(minutes_heat=15, minutes_wash=40), 1, "learn"))
+    short = sample(wash(minutes_heat=7, minutes_wash=15, minutes_spin=0), 2)
+    res = store.learn(short, shown="Lang")
+    assert res.profile != "Lang"
+    assert len(store.get("Lang").samples) == 1
+
+
+def test_delete_recording():
+    store = ProfileStore()
+    store.add_sample("A", sample(wash(), 1000.0))
+    store.add_sample("A", sample(wash(), 5000.0))
+    assert store.delete_recording(5100.0)
+    assert [s.recorded for s in store.get("A").samples] == [1000.0]
+    assert not store.delete_recording(9000.0)

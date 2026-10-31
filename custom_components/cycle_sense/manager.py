@@ -348,6 +348,20 @@ class CycleManager(DataUpdateCoordinator[None]):
         self._after_profiles_changed()
         return True
 
+    async def async_delete_recording(self, start: float) -> bool:
+        """Forget the stored run that started at ``start``."""
+        async with self._lock:
+            deleted = await self.hass.async_add_executor_job(
+                self.profiles.delete_recording, start
+            )
+        if not deleted:
+            return False
+        # Also from the history, so that import_history can find the run again.
+        self.history = [h for h in self.history if abs(h["start"] - start) > 180]
+        self._estimate_last()
+        self._after_profiles_changed()
+        return True
+
     async def async_merge_recordings(
         self, start: float, program: str | None = None, load: float | None = None
     ) -> str | None:

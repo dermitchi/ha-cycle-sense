@@ -504,6 +504,20 @@
           "description": "How full the drum was (optional)."
         }
       }
+    },
+    "delete_recording": {
+      "name": "Delete recording",
+      "description": "Forgets one stored run, e.g. one that was cut off too early.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Appliance",
+          "description": "The Cycle Sense appliance."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Start time of the run (±3 minutes)."
+        }
+      }
     }
   }
 }

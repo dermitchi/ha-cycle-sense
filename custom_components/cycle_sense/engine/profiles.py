@@ -80,11 +80,15 @@ class Sample:
         return cls(**data)
 
 
-def same_program(a: Sample, b: Sample) -> float | None:
-    """Distance if both runs look like the same program, else None."""
+def _similar_length(a: Sample, b: Sample) -> bool:
     longer = max(a.duration_s, b.duration_s)
     shorter = max(1.0, min(a.duration_s, b.duration_s))
-    if longer / shorter > MAX_DURATION_RATIO:
+    return longer / shorter <= MAX_DURATION_RATIO
+
+
+def same_program(a: Sample, b: Sample) -> float | None:
+    """Distance if both runs look like the same program, else None."""
+    if not _similar_length(a, b):
         return None
     dist = dtw_distance(features(a.trace), features(b.trace))
     return dist if dist <= ACCEPT_DISTANCE else None
@@ -240,6 +244,15 @@ class ProfileStore:
         self.remove_recording(run.recorded)
         return self.add_sample(name, run)
 
+    def delete_recording(self, start: float, tolerance: float = 180.0) -> bool:
+        """Forget the run that started at ``start`` (± ``tolerance`` s)."""
+        runs = [*self.unassigned, *(s for p in self.profiles for s in p.samples)]
+        near = [s for s in runs if abs(s.recorded - start) <= tolerance]
+        if not near:
+            return False
+        self.remove_recording(min(near, key=lambda s: abs(s.recorded - start)).recorded)
+        return True
+
     def merge_recordings(
         self, first: float, second: float, bin_s: int, tolerance: float = 180.0
     ) -> Sample | None:
@@ -328,14 +341,19 @@ class ProfileStore:
         """Store a finished run: explicitly, by match, or by clustering.
 
         ``shown`` is the program displayed while the run ended; it wins over a
-        fresh classification so that what was shown is also what is stored.
+        fresh classification so that what was shown is also what is stored,
+        unless the run is far off the length of all its recordings.
         """
         if name:
             self.remove_recording(sample.recorded)
             prof = self.add_sample(name, sample)
             return LearnResult(prof.name, created=len(prof.samples) == 1)
 
-        if shown and (prof := self.get(shown)) is not None:
+        if (
+            shown
+            and (prof := self.get(shown)) is not None
+            and any(_similar_length(sample, s) for s in prof.samples)
+        ):
             if auto_improve:
                 self.add_sample(prof.name, sample)
             return LearnResult(prof.name)

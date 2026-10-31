@@ -123,3 +123,31 @@ def test_motion_after_program_end_is_tracked():
             t += 30
     assert det.phase == Phase.FINISHED
     assert det.motion_at == 3870
+
+
+def test_bursts_with_single_low_samples_keep_cycle_alive():
+    """Real washer 31.10.: light load tumbling, a low sample every ~2 minutes."""
+    tumble = [(90, 40), (30, 4), (120, 40), (30, 4)] * 4
+    _, ev = run([(1800, 300), (30, 4)] + tumble + [(1200, 4)])
+    assert types(ev) == [EventType.STARTED, EventType.FINISHED]
+    assert ev[1].cycle.end == 1800 + 30 + 4 * 270 - 30
+
+
+def test_dip_merge_does_not_join_anti_crease_pulses():
+    tail = [(60, 130), (120, 2)] * 15
+    _, ev = run([(3000, 150), (120, 2)] + tail + [(600, 2)], DetectorConfig(end_delay_s=240))
+    assert types(ev) == [EventType.STARTED, EventType.FINISHED]
+    assert ev[1].cycle.end == 3000
+
+
+def test_restore_during_dip():
+    det = Detector(DetectorConfig())
+    for t in range(0, 600, 30):
+        det.update(float(t), 300.0)
+    det.update(600.0, 4.0)
+    assert det.run_dip_since == 600.0
+    other = Detector(DetectorConfig())
+    other.restore(det.to_dict())
+    assert other.run_dip_since == 600.0
+    other.update(630.0, 300.0)
+    assert other.run_dip_since is None and other.run_start is not None
